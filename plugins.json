@@ -1,0 +1,42 @@
+{
+  "name": "apidcms-plugins",
+  "description": "Официальный каталог плагинов для apidcms CMS",
+  "plugins": [
+    {
+      "name": "account",
+      "version": "1.0.0",
+      "title": "Account (Личный кабинет)",
+      "description": "Регистрация, авторизация, remember-me и профиль пользователя для вашего сайта.",
+      "icon": "👤",
+      "author": "@apidcms-team",
+      "category": "users",
+      "dependencies": [],
+      "tags": ["auth", "login", "profile", "registration"],
+      "min_cms_version": "1.0.0"
+    },
+    {
+      "name": "cart",
+      "version": "1.0.0",
+      "title": "Cart (Корзина товаров)",
+      "description": "Полноценная корзина с AJAX-добавлением и чекаутом для вашего магазина.",
+      "icon": "🛒",
+      "author": "@apidcms-team",
+      "category": "ecommerce",
+      "dependencies": [],
+      "tags": ["shop", "cart", "checkout", "ajax"],
+      "min_cms_version": "1.0.0"
+    },
+    {
+      "name": "subscription",
+      "version": "1.0.0",
+      "title": "Subscription (Подписки)",
+      "description": "Тарифы, оплата через YooKassa и защищённый доступ к контенту для подписчиков.",
+      "icon": "⭐",
+      "author": "@apidcms-team",
+      "category": "monetization",
+      "dependencies": ["account"],
+      "tags": ["subscription", "paywall", "yookassa", "monetization"],
+      "min_cms_version": "1.0.0"
+    }
+  ]
+}

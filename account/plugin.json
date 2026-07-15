@@ -1,0 +1,29 @@
+{
+    "name": "account",
+    "version": "1.0.0",
+    "description": "Личный кабинет: регистрация, авторизация, профиль",
+    "enabled": false,
+    "dependencies": [],
+    "routes": {
+        "login": "/login",
+        "register": "/register",
+        "profile": "/profile",
+        "logout": "/logout"
+    },
+    "settings": [
+        {
+            "key": "require_email_confirm",
+            "type": "checkbox",
+            "value": false,
+            "label": "Подтверждение email",
+            "description": "Требовать подтверждение email при регистрации"
+        },
+        {
+            "key": "default_role",
+            "type": "text",
+            "value": "user",
+            "label": "Роль по умолчанию",
+            "description": "Роль, назначаемая новым пользователям"
+        }
+    ]
+}

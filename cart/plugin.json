@@ -1,0 +1,23 @@
+{
+    "name": "cart",
+    "version": "1.0.0",
+    "description": "Корзина товаров: добавление, удаление, изменение количества",
+    "enabled": false,
+    "dependencies": [],
+    "settings": [
+        {
+            "key": "currency",
+            "type": "text",
+            "value": "₽",
+            "label": "Валюта",
+            "description": "Символ валюты для отображения цен"
+        },
+        {
+            "key": "min_order",
+            "type": "number",
+            "value": 1,
+            "label": "Мин. заказ",
+            "description": "Минимальное количество товара в заказе"
+        }
+    ]
+}

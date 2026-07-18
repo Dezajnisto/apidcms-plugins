@@ -1,44 +1,35 @@
 {% set sub = current_subscription() %}
 {% if sub is not empty %}
 <!-- Active subscription -->
-<div style="background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(245,158,11,0.08)); border: 1px solid rgba(168,85,247,0.25); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-    <span style="font-size: 2rem;">🔥</span>
-    <div>
-      <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--fg); margin: 0 0 4px 0;">{{ sub.plan_name }}</h3>
-      <p style="color: var(--muted); font-size: 0.85rem; margin: 0;">
-        Действует до {{ sub.expires_at|date("d.m.Y") }}
-      </p>
+<div class="widget">
+    <div class="widget__left">
+        <div class="widget__indicator widget__indicator--green"></div>
+        <div class="widget__text">
+            <strong>{{ sub.plan_name }}</strong>
+            <small>Действует до {{ sub.expires_at|date("d.m.Y") }}</small>
+        </div>
     </div>
-  </div>
-  <div style="display: flex; gap: 12px; align-items: center;">
-    <span style="background: #34D399; color: #0D0D12; padding: 4px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 700;">Активна</span>
-    <span style="color: var(--muted); font-size: 0.8rem;">
-      {{ sub.amount }} ₽ / {{ sub.duration_months }} мес
-    </span>
-  </div>
+    <div class="widget__actions">
+        <span style="background:#34D399;color:#0D0D12;padding:4px 14px;border-radius:999px;font-size:0.8rem;font-weight:700;">Активна</span>
+        <span style="color:var(--muted);font-size:0.8rem;">{{ sub.amount }} &#8381; / {{ sub.duration_months }} мес</span>
+    </div>
 </div>
 {% else %}
 <!-- No subscription -->
-<div style="background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 24px;">
-  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-    <span style="font-size: 2rem;">🔒</span>
-    <div>
-      <h3 style="font-size: 1.2rem; font-weight: 700; color: var(--fg); margin: 0 0 4px 0;">Нет активной подписки</h3>
-      <p style="color: var(--muted); font-size: 0.85rem; margin: 0;">
-        Оформите подписку, чтобы получить доступ ко всем промтам
-      </p>
+<div class="widget">
+    <div class="widget__left">
+        <div class="widget__indicator widget__indicator--gray"></div>
+        <div class="widget__text">
+            <strong>Нет активной подписки</strong>
+            <small>Оформите подписку, чтобы получить доступ ко всем промтам</small>
+        </div>
     </div>
-  </div>
-  <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-    {% for plan in get_plans() %}
-    <a href="/subscribe/{{ plan.slug }}"
-       style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; background: linear-gradient(135deg, var(--accent-amber), #E07B00); color: #0D0D12; border-radius: 10px; font-weight: 700; font-size: 0.95rem; text-decoration: none; transition: transform 0.2s;"
-       onmouseover="this.style.transform='translateY(-2px)'"
-       onmouseout="this.style.transform='translateY(0)'">
-      {{ plan.name }} — {{ plan.price }} ₽ / {{ plan.duration_months }} мес
-    </a>
-    {% endfor %}
-  </div>
+    <div class="widget__actions">
+        {% for plan in get_plans() %}
+        <a href="/subscribe/{{ plan.slug }}" class="btn btn--primary">
+            {{ plan.name }} - {{ plan.price }} &#8381; / {{ plan.duration_months }} мес
+        </a>
+        {% endfor %}
+    </div>
 </div>
 {% endif %}

@@ -49,12 +49,20 @@ $pm->addAction('twig.init', function ($fc, $twig) use ($pluginDir) {
         return \Plugins\Subscription\Controller::currentSubscription($fc);
     }));
 
-    // Demo mode flag (from plugin settings)
-    $twig->addFunction(new TwigFunction('subscription_demo', function () use ($fc) {
+    // Demo mode flag (from plugin settings in plugin.json)
+    $twig->addFunction(new TwigFunction('subscription_demo', function () use ($fc, $pm) {
         try {
-            return $fc->getSetting('subscription_demo_mode');
+            $config = $pm->getPlugin('subscription');
+            if (!empty($config['settings'])) {
+                foreach ($config['settings'] as $setting) {
+                    if ($setting['key'] === 'demo_mode') {
+                        return !empty($setting['value']);
+                    }
+                }
+            }
+            return false;
         } catch (\Exception $e) {
-            return true;
+            return false;
         }
     }));
 
@@ -71,6 +79,13 @@ $pm->addAction('front.router.before', function ($path, $fc) use ($pluginDir) {
     if (preg_match('#^catalog-content/(.+)$#', $path, $m)) {
         require_once $pluginDir . '/controllers/SubscriptionController.php';
         \Plugins\Subscription\Controller::getContent($fc);
+        exit;
+    }
+
+    // /catalog-copy/{slug} - increment copy count
+    if (preg_match('#^catalog-copy/(.+)$#', $path, $m)) {
+        require_once $pluginDir . '/controllers/SubscriptionController.php';
+        \Plugins\Subscription\Controller::countCopy($fc);
         exit;
     }
 

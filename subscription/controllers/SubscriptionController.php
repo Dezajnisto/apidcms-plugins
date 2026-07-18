@@ -27,8 +27,20 @@ class Controller
             return;
         }
 
-        // Demo mode check
-        $isDemo = !empty($_GET['demo']);
+        // Demo mode check: verify setting, not just query param
+        $isDemo = false;
+        if (!empty($_GET['demo'])) {
+            $pm = \Core\PluginManager::getInstance();
+            $config = $pm->getPlugin('subscription');
+            if (!empty($config['settings'])) {
+                foreach ($config['settings'] as $s) {
+                    if ($s['key'] === 'demo_mode' && !empty($s['value'])) {
+                        $isDemo = true;
+                        break;
+                    }
+                }
+            }
+        }
 
         if (!$isDemo && !self::isSubscriber($fc)) {
             http_response_code(403);
@@ -52,6 +64,41 @@ class Controller
             'content' => $item['content'],
             'demo' => $isDemo
         ]);
+    }
+
+    /**
+     * Increment copy count for catalog item
+     * POST /catalog-copy/{slug}
+     */
+    public static function countCopy($fc)
+    {
+        header('Content-Type: application/json');
+
+        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        $parts = explode('/', trim(parse_url($uri, PHP_URL_PATH), '/'));
+        $slug = end($parts);
+
+        if (empty($slug)) {
+            http_response_code(400);
+            echo json_encode(['error' => 'Slug required']);
+            return;
+        }
+
+        try {
+            $db = self::getDb($fc);
+            $db->query(
+                "UPDATE catalog SET copies_count = copies_count + 1 WHERE slug = ? AND status = 'active'",
+                [$slug]
+            );
+            $item = $db->query("SELECT copies_count FROM catalog WHERE slug = ?", [$slug])->fetch();
+            echo json_encode([
+                'ok' => true,
+                'copies_count' => $item ? (int)$item['copies_count'] : 0
+            ]);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['error' => 'Internal error']);
+        }
     }
 
     /**

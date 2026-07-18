@@ -1,6 +1,6 @@
 {
     "name": "subscription",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Подписки на контент: тарифы, оплата, доступ к промтам",
     "enabled": true,
     "dependencies": [
@@ -24,7 +24,7 @@
         {
             "key": "demo_mode",
             "type": "checkbox",
-            "value": true,
+            "value": false,
             "label": "Демо-режим",
             "description": "Разрешить доступ к промтам без подписки через кнопку Demo"
         }

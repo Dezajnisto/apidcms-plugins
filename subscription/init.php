@@ -50,8 +50,9 @@ $pm->addAction('twig.init', function ($fc, $twig) use ($pluginDir) {
     }));
 
     // Demo mode flag (from plugin settings in plugin.json)
-    $twig->addFunction(new TwigFunction('subscription_demo', function () use ($fc, $pm) {
+    $twig->addFunction(new TwigFunction('subscription_demo', function () use ($fc) {
         try {
+            $pm = \Core\PluginManager::getInstance();
             $config = $pm->getPlugin('subscription');
             if (!empty($config['settings'])) {
                 foreach ($config['settings'] as $setting) {

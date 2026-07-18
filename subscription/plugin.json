@@ -1,6 +1,6 @@
 {
     "name": "subscription",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "description": "Подписки на контент: тарифы, оплата, доступ к промтам",
     "enabled": true,
     "dependencies": [

@@ -11,7 +11,12 @@
       "author": "@apidcms-team",
       "category": "users",
       "dependencies": [],
-      "tags": ["auth", "login", "profile", "registration"],
+      "tags": [
+        "auth",
+        "login",
+        "profile",
+        "registration"
+      ],
       "min_cms_version": "1.0.0"
     },
     {
@@ -23,19 +28,31 @@
       "author": "@apidcms-team",
       "category": "ecommerce",
       "dependencies": [],
-      "tags": ["shop", "cart", "checkout", "ajax"],
+      "tags": [
+        "shop",
+        "cart",
+        "checkout",
+        "ajax"
+      ],
       "min_cms_version": "1.0.0"
     },
     {
       "name": "subscription",
-      "version": "1.0.0",
+      "version": "1.1.1",
       "title": "Subscription (Подписки)",
       "description": "Тарифы, оплата через YooKassa и защищённый доступ к контенту для подписчиков.",
       "icon": "⭐",
       "author": "@apidcms-team",
       "category": "monetization",
-      "dependencies": ["account"],
-      "tags": ["subscription", "paywall", "yookassa", "monetization"],
+      "dependencies": [
+        "account"
+      ],
+      "tags": [
+        "subscription",
+        "paywall",
+        "yookassa",
+        "monetization"
+      ],
       "min_cms_version": "1.0.0"
     }
   ]

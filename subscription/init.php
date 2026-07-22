@@ -29,6 +29,16 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
         error_log("Subscription migration v1.2.2 error: " . $e->getMessage());
     }
 
+    // Migration v1.3.1: add trial_once column
+    try {
+        $cols = $db->query("PRAGMA table_info(subscription_plans)")->fetchAll(\PDO::FETCH_COLUMN, 1);
+        if (is_array($cols) && !in_array('trial_once', $cols)) {
+            $db->exec("ALTER TABLE subscription_plans ADD COLUMN trial_once INTEGER DEFAULT 0");
+        }
+    } catch (\Exception $e) {
+        error_log("Subscription migration v1.3.1 error: " . $e->getMessage());
+    }
+
     $migrationFile = $pluginDir . '/migrations/001_create.sql';
     if (!file_exists($migrationFile)) return;
     $sql = file_get_contents($migrationFile);

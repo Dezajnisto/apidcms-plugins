@@ -1,5 +1,19 @@
 # Subscription Plugin — Changelog
 
+## 1.3.1 — 2026-07-22
+
+### New
+
+- **trial_once column** — one-time free/trial plans. Set `trial_once=1` on a plan to limit users to a single activation.
+- After trial expires, user sees paid plans instead of re-subscribing to free.
+- Migration: `ALTER TABLE subscription_plans ADD COLUMN trial_once INTEGER DEFAULT 0`
+
+### Files
+
+- `init.php` — v1.3.1 migration for trial_once
+- `controllers/SubscriptionController.php` — trial_once check in subscribe()
+- `plugin.json` — v1.3.1
+
 ## 1.3.0 — 2026-07-22
 
 ### Changed (BREAKING)

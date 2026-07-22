@@ -124,6 +124,18 @@ class Controller
                 exit;
             }
 
+            // trial_once check: one-time free/trial plans
+            if (!empty($plan['trial_once'])) {
+                $hadTrial = $db->query(
+                    "SELECT id FROM user_subscriptions WHERE user_id = ? AND plan_id = ? AND status IN ('active','expired') LIMIT 1",
+                    [$_SESSION['user_id'], $plan['id']]
+                )->fetch();
+                if ($hadTrial) {
+                    header('Location: /subscribe?error=trial_used');
+                    exit;
+                }
+            }
+
             self::activateFreeSubscription($db, $_SESSION['user_id'], $plan);
             header('Location: /profile?subscribed=1');
             exit;

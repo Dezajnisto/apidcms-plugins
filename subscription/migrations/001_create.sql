@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
     name TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     price NUMERIC NOT NULL,
-    duration_months INTEGER NOT NULL,
+    duration_days INTEGER NOT NULL,
     description TEXT,
     features TEXT,
     is_active INTEGER DEFAULT 1,
@@ -30,6 +30,6 @@ CREATE INDEX IF NOT EXISTS idx_user_subscriptions_user ON user_subscriptions(use
 CREATE INDEX IF NOT EXISTS idx_user_subscriptions_status ON user_subscriptions(status);
 
 -- Insert default plans
-INSERT OR IGNORE INTO subscription_plans (name, slug, price, duration_months, description, features, sort_order) VALUES
-('Bajto Light', 'light', 790, 6, 'Базовый доступ ко всем промтам', '["Доступ ко всем промтам","Копирование одним кликом","Новые промты каждую неделю","Email-поддержка"]', 10),
-('Bajto Pro', 'pro', 1490, 12, 'Полный доступ + эксклюзивы', '["Всё из Light","Эксклюзивные промты","Приоритетная поддержка","Доступ к бета-промтам","История копирований"]', 20);
+INSERT OR IGNORE INTO subscription_plans (name, slug, price, duration_days, description, features, sort_order) VALUES
+('Bajto Light', 'light', 990, 180, 'Базовый доступ ко всем промтам', '["Доступ ко всем промтам","Копирование одним кликом","Новые промты каждую неделю","Email-поддержка"]', 10),
+('Bajto Pro', 'pro', 1490, 365, 'Полный доступ + эксклюзивы', '["Всё из Light","Эксклюзивные промты","Приоритетная поддержка","Доступ к бета-промтам","История копирований"]', 20);

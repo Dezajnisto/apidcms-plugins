@@ -1,0 +1,23 @@
+{
+    "name": "yookassa",
+    "version": "1.0.0",
+    "description": "Payment gateway: YooKassa integration. Provides payment API for other plugins.",
+    "enabled": true,
+    "dependencies": [],
+    "settings": [
+        {
+            "key": "yookassa_shop_id",
+            "type": "text",
+            "value": "",
+            "label": "YooKassa Shop ID",
+            "description": "ID магазина из личного кабинета YooKassa"
+        },
+        {
+            "key": "yookassa_secret_key",
+            "type": "text",
+            "value": "",
+            "label": "YooKassa Secret Key",
+            "description": "Секретный ключ API YooKassa"
+        }
+    ]
+}

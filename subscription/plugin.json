@@ -1,32 +1,10 @@
 {
     "name": "subscription",
-    "version": "1.1.1",
-    "description": "Подписки на контент: тарифы, оплата, доступ к промтам",
+    "version": "1.3.0",
+    "description": "Подписки на контент: тарифы, уровни доступа, абонентская логика",
     "enabled": true,
     "dependencies": [
         "account"
     ],
-    "settings": [
-        {
-            "key": "yookassa_shop_id",
-            "type": "text",
-            "value": "",
-            "label": "YooKassa Shop ID",
-            "description": "ID магазина из личного кабинета YooKassa"
-        },
-        {
-            "key": "yookassa_secret_key",
-            "type": "text",
-            "value": "",
-            "label": "YooKassa Secret Key",
-            "description": "Секретный ключ API YooKassa"
-        },
-        {
-            "key": "demo_mode",
-            "type": "checkbox",
-            "value": false,
-            "label": "Демо-режим",
-            "description": "Разрешить доступ к промтам без подписки через кнопку Demo"
-        }
-    ]
+    "settings": []
 }

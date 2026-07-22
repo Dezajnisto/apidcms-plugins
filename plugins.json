@@ -38,9 +38,9 @@
     },
     {
       "name": "subscription",
-      "version": "1.1.1",
+      "version": "1.3.0",
       "title": "Subscription (Подписки)",
-      "description": "Тарифы, оплата через YooKassa и защищённый доступ к контенту для подписчиков.",
+      "description": "Тарифы, подписки и защищённый доступ к контенту. Работает с любым платёжным шлюзом.",
       "icon": "⭐",
       "author": "@apidcms-team",
       "category": "monetization",
@@ -52,6 +52,23 @@
         "paywall",
         "yookassa",
         "monetization"
+      ],
+      "min_cms_version": "1.0.0"
+    },
+    {
+      "name": "yookassa",
+      "version": "1.0.0",
+      "title": "YooKassa (Платёжный шлюз)",
+      "description": "Приём платежей через YooKassa API. Плагин-шлюз для subscription, cart и других плагинов.",
+      "icon": "💳",
+      "author": "@apidcms-team",
+      "category": "payments",
+      "dependencies": [],
+      "tags": [
+        "yookassa",
+        "payment",
+        "gateway",
+        "checkout"
       ],
       "min_cms_version": "1.0.0"
     }

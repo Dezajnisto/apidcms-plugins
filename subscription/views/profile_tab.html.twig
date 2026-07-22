@@ -11,7 +11,10 @@
     </div>
     <div class="widget__actions">
         <span style="background:#34D399;color:#0D0D12;padding:4px 14px;border-radius:999px;font-size:0.8rem;font-weight:700;">Активна</span>
-        <span style="color:var(--muted);font-size:0.8rem;">{{ sub.amount }} &#8381; / {{ sub.duration_months }} мес</span>
+        <span style="color:var(--muted);font-size:0.8rem;">
+            {% if sub.amount > 0 %}{{ sub.amount }} &#8381; / {% endif %}
+            {{ format_duration(sub.duration_days) }}
+        </span>
     </div>
 </div>
 {% else %}
@@ -27,7 +30,9 @@
     <div class="widget__actions">
         {% for plan in get_plans() %}
         <a href="/subscribe/{{ plan.slug }}" class="btn btn--primary">
-            {{ plan.name }} - {{ plan.price }} &#8381; / {{ plan.duration_months }} мес
+            {{ plan.name }}
+            {% if plan.price > 0 %} - {{ plan.price }} &#8381;{% else %} - Бесплатно{% endif %}
+            / {{ format_duration(plan.duration_days) }}
         </a>
         {% endfor %}
     </div>

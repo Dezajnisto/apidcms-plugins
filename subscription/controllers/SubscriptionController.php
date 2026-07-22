@@ -2,7 +2,14 @@
 /**
  * Subscription Plugin — Controller
  *
- * Handles: /catalog-content/{slug}, /subscribe/{plan}
+ * Handles: /catalog-content/{slug}, /catalog-copy/{slug}, /subscribe/{plan}
+ *
+ * Hook API for payment gateways:
+ *   subscription.create_payment  (filter) — called by subscribe(), gateways respond
+ *   subscription.check_payment   (filter) — called by onPaymentReturn(), gateways respond
+ *   subscription.payment.confirmed (action) — gateways call on success
+ *   subscription.payment.canceled  (action) — gateways call on cancel
+ *   subscription.payment.return    (action) — gateways call on return from bank
  */
 
 namespace Plugins\Subscription;
@@ -11,7 +18,6 @@ class Controller
 {
     /**
      * Get catalog content via AJAX
-     * GET /catalog-content/{slug}?demo=1
      */
     public static function getContent($fc)
     {
@@ -27,22 +33,7 @@ class Controller
             return;
         }
 
-        // Demo mode check: verify setting, not just query param
-        $isDemo = false;
-        if (!empty($_GET['demo'])) {
-            $pm = \Core\PluginManager::getInstance();
-            $config = $pm->getPlugin('subscription');
-            if (!empty($config['settings'])) {
-                foreach ($config['settings'] as $s) {
-                    if ($s['key'] === 'demo_mode' && !empty($s['value'])) {
-                        $isDemo = true;
-                        break;
-                    }
-                }
-            }
-        }
-
-        if (!$isDemo && !self::isSubscriber($fc)) {
+        if (!self::isSubscriber($fc)) {
             http_response_code(403);
             echo json_encode(['error' => 'Subscription required']);
             return;
@@ -60,15 +51,11 @@ class Controller
             return;
         }
 
-        echo json_encode([
-            'content' => $item['content'],
-            'demo' => $isDemo
-        ]);
+        echo json_encode(['content' => $item['content']]);
     }
 
     /**
      * Increment copy count for catalog item
-     * POST /catalog-copy/{slug}
      */
     public static function countCopy($fc)
     {
@@ -91,10 +78,7 @@ class Controller
                 [$slug]
             );
             $item = $db->query("SELECT copies_count FROM catalog WHERE slug = ?", [$slug])->fetch();
-            echo json_encode([
-                'ok' => true,
-                'copies_count' => $item ? (int)$item['copies_count'] : 0
-            ]);
+            echo json_encode(['ok' => true, 'copies_count' => $item ? (int)$item['copies_count'] : 0]);
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['error' => 'Internal error']);
@@ -103,13 +87,10 @@ class Controller
 
     /**
      * Subscribe to a plan
-     * GET/POST /subscribe/{plan}
      */
     public static function subscribe($fc)
     {
-        // Must be logged in
         if (empty($_SESSION['user_id'])) {
-            // Redirect to login with return URL
             $uri = $_SERVER['REQUEST_URI'] ?? '/subscribe';
             header('Location: /login?return=' . urlencode($uri));
             exit;
@@ -120,8 +101,6 @@ class Controller
         $planSlug = end($parts);
 
         $db = self::getDb($fc);
-
-        // Find plan
         $plan = $db->query(
             "SELECT * FROM subscription_plans WHERE slug = ? AND is_active = 1",
             [$planSlug]
@@ -133,44 +112,223 @@ class Controller
             return;
         }
 
-        // For now (pre-YooKassa), activate immediately in demo mode
-        $demoMode = $fc->getSetting('subscription_demo_mode');
-        if ($demoMode || true) {
-            // Check if already has active subscription
+        // Free plan — activate immediately
+        if ((float)$plan['price'] == 0) {
             $existing = $db->query(
                 "SELECT id FROM user_subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now')",
                 [$_SESSION['user_id']]
             )->fetch();
 
             if ($existing) {
-                // Already subscribed - redirect to profile
                 header('Location: /profile');
                 exit;
             }
 
-            // Create subscription
-            $expiresAt = date('Y-m-d H:i:s', strtotime("+{$plan['duration_months']} months"));
-            $db->query(
-                "INSERT INTO user_subscriptions (user_id, plan_id, status, amount, started_at, expires_at, payment_id) VALUES (?, ?, 'active', ?, datetime('now'), ?, 'demo_' || datetime('now'))",
-                [$_SESSION['user_id'], $plan['id'], $plan['price'], $expiresAt]
-            );
-
+            self::activateFreeSubscription($db, $_SESSION['user_id'], $plan);
             header('Location: /profile?subscribed=1');
             exit;
         }
 
-        // Real payment flow (YooKassa) - placeholder
-        header('Location: /profile?error=payment_not_configured');
+        // Paid plan — check existing
+        $existing = $db->query(
+            "SELECT id FROM user_subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now')",
+            [$_SESSION['user_id']]
+        )->fetch();
+
+        if ($existing) {
+            header('Location: /profile');
+            exit;
+        }
+
+        // Create pending subscription
+        $db->query(
+            "INSERT INTO user_subscriptions (user_id, plan_id, status, payment_provider, amount, created_at) VALUES (?, ?, 'pending', 'yookassa', ?, datetime('now'))",
+            [$_SESSION['user_id'], $plan['id'], $plan['price']]
+        );
+        $subscriptionId = $db->query("SELECT last_insert_rowid()")->fetchColumn();
+
+        // Ask all registered gateways to create a payment
+        $pm = \Core\PluginManager::getInstance();
+
+        $paymentData = [
+            'amount' => [
+                'value' => number_format((float)$plan['price'], 2, '.', ''),
+                'currency' => 'RUB'
+            ],
+            'description' => $plan['name'] . ' - ' . self::formatDuration($plan['duration_days']),
+            'metadata' => [
+                'user_id' => (string)$_SESSION['user_id'],
+                'plan_slug' => $plan['slug'],
+                'subscription_id' => (string)$subscriptionId
+            ]
+        ];
+
+        $result = $pm->applyFilters('subscription.create_payment', null, $paymentData, $fc);
+
+        if (is_array($result) && !empty($result['error'])) {
+            error_log('Subscription: payment creation failed: ' . $result['error']);
+            header('Location: /profile?error=payment_failed');
+            exit;
+        }
+
+        if (is_array($result) && !empty($result['id'])) {
+            $db->query(
+                "UPDATE user_subscriptions SET payment_id = ? WHERE id = ?",
+                [$result['id'], $subscriptionId]
+            );
+
+            if (!empty($result['confirmation']['confirmation_url'])) {
+                header('Location: ' . $result['confirmation']['confirmation_url']);
+                exit;
+            }
+        }
+
+        // No gateway responded
+        header('Location: /profile?error=no_payment_gateway');
         exit;
     }
 
     /**
-     * Check if current user is an active subscriber
+     * Called by gateways on successful payment (webhook or return)
      */
+    public static function onPaymentConfirmed($payment, $fc): void
+    {
+        $paymentId = $payment['id'] ?? '';
+        $metadata = $payment['metadata'] ?? [];
+        $userId = $metadata['user_id'] ?? null;
+
+        if (!$paymentId || !$userId) {
+            return;
+        }
+
+        $db = self::getDb($fc);
+        $subscription = $db->query(
+            "SELECT us.*, sp.duration_days FROM user_subscriptions us
+             JOIN subscription_plans sp ON us.plan_id = sp.id
+             WHERE us.payment_id = ? AND us.user_id = ? AND us.status = 'pending'
+             ORDER BY us.id DESC LIMIT 1",
+            [$paymentId, $userId]
+        )->fetch();
+
+        if ($subscription) {
+            $expiresAt = date('Y-m-d H:i:s', strtotime("+{$subscription['duration_days']} days"));
+            $db->query(
+                "UPDATE user_subscriptions SET status = 'active', started_at = datetime('now'), expires_at = ? WHERE id = ?",
+                [$expiresAt, $subscription['id']]
+            );
+        }
+    }
+
+    /**
+     * Called by gateways on canceled payment
+     */
+    public static function onPaymentCanceled($payment, $fc): void
+    {
+        $paymentId = $payment['id'] ?? '';
+        if ($paymentId) {
+            $db = self::getDb($fc);
+            $db->query(
+                "UPDATE user_subscriptions SET status = 'canceled' WHERE payment_id = ? AND status = 'pending'",
+                [$paymentId]
+            );
+        }
+    }
+
+    /**
+     * Called by gateways on return from bank page.
+     * Subscription handles the entire return flow: check status, activate, redirect.
+     */
+    public static function onPaymentReturn($fc): void
+    {
+        if (empty($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+
+        $db = self::getDb($fc);
+
+        // Already activated (webhook was faster)?
+        $activeSub = self::currentSubscription($fc);
+        if ($activeSub) {
+            header('Location: /profile?subscribed=1');
+            exit;
+        }
+
+        // Find pending subscription
+        $subscription = $db->query(
+            "SELECT id, payment_id FROM user_subscriptions
+             WHERE user_id = ? AND status = 'pending'
+             ORDER BY id DESC LIMIT 1",
+            [$_SESSION['user_id']]
+        )->fetch();
+
+        if (!$subscription) {
+            header('Location: /profile?error=no_subscription');
+            exit;
+        }
+
+        // Ask gateways to check payment status
+        if ($subscription['payment_id']) {
+            $pm = \Core\PluginManager::getInstance();
+            $payment = $pm->applyFilters('subscription.check_payment', null, $subscription['payment_id'], $fc);
+
+            if (is_array($payment) && isset($payment['status'])) {
+                if ($payment['status'] === 'succeeded') {
+                    self::onPaymentConfirmed($payment, $fc);
+                    header('Location: /profile?subscribed=1');
+                    exit;
+                } elseif ($payment['status'] === 'canceled') {
+                    self::onPaymentCanceled($payment, $fc);
+                    header('Location: /profile?error=payment_canceled');
+                    exit;
+                }
+            }
+        }
+
+        // Still pending
+        header('Location: /profile?pending=1');
+        exit;
+    }
+
+    /**
+     * Activate free subscription immediately
+     */
+    private static function activateFreeSubscription($db, $userId, $plan)
+    {
+        $expiresAt = date('Y-m-d H:i:s', strtotime("+{$plan['duration_days']} days"));
+        $db->query(
+            "INSERT INTO user_subscriptions (user_id, plan_id, status, amount, started_at, expires_at, payment_id) VALUES (?, ?, 'active', ?, datetime('now'), ?, 'free_' || datetime('now'))",
+            [$userId, $plan['id'], $plan['price'], $expiresAt]
+        );
+    }
+
+    /**
+     * Format duration for display
+     */
+    public static function formatDuration($days)
+    {
+        $d = (int)$days;
+        if ($d <= 0) $d = 1;
+        if ($d < 60) {
+            return $d . ' ' . self::plural($d, ['день', 'дня', 'дней']);
+        }
+        $months = round($d / 30);
+        return $months . ' ' . self::plural($months, ['месяц', 'месяца', 'месяцев']);
+    }
+
+    private static function plural($n, $forms)
+    {
+        $n = abs((int)$n) % 100;
+        if ($n >= 11 && $n <= 19) return $forms[2];
+        $n = $n % 10;
+        if ($n == 1) return $forms[0];
+        if ($n >= 2 && $n <= 4) return $forms[1];
+        return $forms[2];
+    }
+
     public static function isSubscriber($fc = null)
     {
         if (empty($_SESSION['user_id'])) return false;
-
         try {
             $db = self::getDb($fc);
             $sub = $db->query(
@@ -183,17 +341,13 @@ class Controller
         }
     }
 
-    /**
-     * Get current subscription info
-     */
     public static function currentSubscription($fc = null)
     {
         if (empty($_SESSION['user_id'])) return null;
-
         try {
             $db = self::getDb($fc);
             return $db->query(
-                "SELECT us.*, sp.name as plan_name, sp.slug as plan_slug, sp.duration_months
+                "SELECT us.*, sp.name as plan_name, sp.slug as plan_slug, sp.duration_days
                  FROM user_subscriptions us
                  JOIN subscription_plans sp ON us.plan_id = sp.id
                  WHERE us.user_id = ? AND us.status = 'active' AND us.expires_at > datetime('now')
@@ -205,9 +359,6 @@ class Controller
         }
     }
 
-    /**
-     * Get all plans
-     */
     public static function getPlans($fc = null)
     {
         try {
@@ -220,14 +371,10 @@ class Controller
         }
     }
 
-    /**
-     * Get DB from FrontController
-     */
     private static function getDb($fc = null)
     {
         static $db = null;
         if ($db === null) {
-            // Database constructor checks for FRONT_ACCESS or ADMIN_ACCESS
             if (!defined('FRONT_ACCESS')) {
                 define('FRONT_ACCESS', true);
             }

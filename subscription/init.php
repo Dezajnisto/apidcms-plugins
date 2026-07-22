@@ -2,8 +2,11 @@
 /**
  * Subscription Plugin — init.php
  *
- * Registers hooks: db.migrate, twig.init, front.router.before, admin.menu
- * Twig functions: is_subscriber(), current_subscription()
+ * Hook API for payment gateways:
+ *   Filter:  subscription.create_payment — gateways respond with payment URL
+ *   Action:  subscription.payment.confirmed — gateways call on success
+ *   Action:  subscription.payment.canceled  — gateways call on cancel
+ *   Action:  subscription.payment.return    — gateways call on return from bank
  */
 
 use Core\PluginManager;
@@ -15,6 +18,17 @@ $pluginDir = __DIR__;
 // === Migrations ===
 
 $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
+    try {
+        $cols = $db->query("PRAGMA table_info(subscription_plans)")->fetchAll(\PDO::FETCH_COLUMN, 1);
+        if (is_array($cols) && in_array('duration_months', $cols) && !in_array('duration_days', $cols)) {
+            $db->exec("ALTER TABLE subscription_plans ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 30");
+            $db->exec("UPDATE subscription_plans SET duration_days = ROUND(duration_months * 30)");
+            $db->exec("ALTER TABLE subscription_plans DROP COLUMN duration_months");
+        }
+    } catch (\Exception $e) {
+        error_log("Subscription migration v1.2.2 error: " . $e->getMessage());
+    }
+
     $migrationFile = $pluginDir . '/migrations/001_create.sql';
     if (!file_exists($migrationFile)) return;
     $sql = file_get_contents($migrationFile);
@@ -27,76 +41,68 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
     }
 }, 10, 'subscription');
 
+// === Load controller ===
+
+require_once $pluginDir . '/controllers/SubscriptionController.php';
+
 // === Twig: functions + template paths ===
 
 $pm->addAction('twig.init', function ($fc, $twig) use ($pluginDir) {
-    // Add plugin views path
     $loader = $twig->getLoader();
     if ($loader instanceof \Twig\Loader\FilesystemLoader) {
         $loader->addPath($pluginDir . '/views', 'subscription');
     }
+    $loader->addPath($pluginDir . '/views');
 
-    // Load controller for Twig functions
-    require_once $pluginDir . '/controllers/SubscriptionController.php';
-
-    // is_subscriber()
     $twig->addFunction(new TwigFunction('is_subscriber', function () use ($fc) {
         return \Plugins\Subscription\Controller::isSubscriber($fc);
     }));
 
-    // current_subscription()
     $twig->addFunction(new TwigFunction('current_subscription', function () use ($fc) {
         return \Plugins\Subscription\Controller::currentSubscription($fc);
     }));
 
-    // Demo mode flag (from plugin settings in plugin.json)
-    $twig->addFunction(new TwigFunction('subscription_demo', function () use ($fc) {
-        try {
-            $pm = \Core\PluginManager::getInstance();
-            $config = $pm->getPlugin('subscription');
-            if (!empty($config['settings'])) {
-                foreach ($config['settings'] as $setting) {
-                    if ($setting['key'] === 'demo_mode') {
-                        return !empty($setting['value']);
-                    }
-                }
-            }
-            return false;
-        } catch (\Exception $e) {
-            return false;
-        }
+    $twig->addFunction(new TwigFunction('format_duration', function ($months) {
+        return \Plugins\Subscription\Controller::formatDuration($months);
     }));
 
-    // get_plans() - all active subscription plans
     $twig->addFunction(new TwigFunction('get_plans', function () use ($fc) {
         return \Plugins\Subscription\Controller::getPlans($fc);
     }));
 }, 10, 'subscription');
 
-// === Routes: AJAX endpoints ===
+// === Routes ===
 
-$pm->addAction('front.router.before', function ($path, $fc) use ($pluginDir) {
-    // /catalog-content/{slug} - AJAX content endpoint
+$pm->addAction('front.router.before', function ($path, $fc) {
     if (preg_match('#^catalog-content/(.+)$#', $path, $m)) {
-        require_once $pluginDir . '/controllers/SubscriptionController.php';
         \Plugins\Subscription\Controller::getContent($fc);
         exit;
     }
 
-    // /catalog-copy/{slug} - increment copy count
     if (preg_match('#^catalog-copy/(.+)$#', $path, $m)) {
-        require_once $pluginDir . '/controllers/SubscriptionController.php';
         \Plugins\Subscription\Controller::countCopy($fc);
         exit;
     }
 
-    // /subscribe/{plan} - subscription flow
     if (preg_match('#^subscribe/(.+)$#', $path, $m)) {
-        require_once $pluginDir . '/controllers/SubscriptionController.php';
         \Plugins\Subscription\Controller::subscribe($fc);
         exit;
     }
 }, 25, 'subscription');
+
+// === Hook API handlers (called by gateways) ===
+
+$pm->addAction('subscription.payment.confirmed', function ($payment, $fc) {
+    \Plugins\Subscription\Controller::onPaymentConfirmed($payment, $fc);
+}, 10, 'subscription');
+
+$pm->addAction('subscription.payment.canceled', function ($payment, $fc) {
+    \Plugins\Subscription\Controller::onPaymentCanceled($payment, $fc);
+}, 10, 'subscription');
+
+$pm->addAction('subscription.payment.return', function ($fc) {
+    \Plugins\Subscription\Controller::onPaymentReturn($fc);
+}, 10, 'subscription');
 
 // === Admin menu ===
 

@@ -2,11 +2,15 @@
 /**
  * Subscription Plugin — init.php
  *
- * Hook API for payment gateways:
- *   Filter:  subscription.create_payment — gateways respond with payment URL
- *   Action:  subscription.payment.confirmed — gateways call on success
- *   Action:  subscription.payment.canceled  — gateways call on cancel
- *   Action:  subscription.payment.return    — gateways call on return from bank
+ * Uses universal payment hooks (payments.*):
+ *   Filter:  payments.create_payment — gateways respond with payment URL
+ *   Filter:  payments.check_payment  — gateways respond with payment status
+ *   Action:  payments.confirmed — payment succeeded (filters by metadata.type)
+ *   Action:  payments.canceled  — payment canceled
+ *   Action:  payments.return    — user returned from bank page
+ *
+ * Fires:
+ *   Action:  subscription.activated — when subscription becomes active
  */
 
 use Core\PluginManager;
@@ -100,17 +104,20 @@ $pm->addAction('front.router.before', function ($path, $fc) {
     }
 }, 25, 'subscription');
 
-// === Hook API handlers (called by gateways) ===
+// === Universal payment hook handlers (filtered by metadata.type) ===
 
-$pm->addAction('subscription.payment.confirmed', function ($payment, $fc) {
+$pm->addAction('payments.confirmed', function ($payment, $fc) {
+    // Only handle subscription payments
+    if (($payment['metadata']['type'] ?? '') !== 'subscription') return;
     \Plugins\Subscription\Controller::onPaymentConfirmed($payment, $fc);
 }, 10, 'subscription');
 
-$pm->addAction('subscription.payment.canceled', function ($payment, $fc) {
+$pm->addAction('payments.canceled', function ($payment, $fc) {
+    if (($payment['metadata']['type'] ?? '') !== 'subscription') return;
     \Plugins\Subscription\Controller::onPaymentCanceled($payment, $fc);
 }, 10, 'subscription');
 
-$pm->addAction('subscription.payment.return', function ($fc) {
+$pm->addAction('payments.return', function ($fc) {
     \Plugins\Subscription\Controller::onPaymentReturn($fc);
 }, 10, 'subscription');
 

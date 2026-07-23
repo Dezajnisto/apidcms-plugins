@@ -120,12 +120,9 @@ class Service
         $pm = \Core\PluginManager::getInstance();
 
         if ($event === 'payment.succeeded') {
-            // Dispatch to both subscription and credits — each checks metadata.type
-            $pm->doAction('credits.payment.confirmed', $object, $fc);
-            $pm->doAction('subscription.payment.confirmed', $object, $fc);
+            $pm->doAction('payments.confirmed', $object, $fc);
         } elseif ($event === 'payment.canceled') {
-            $pm->doAction('credits.payment.canceled', $object, $fc);
-            $pm->doAction('subscription.payment.canceled', $object, $fc);
+            $pm->doAction('payments.canceled', $object, $fc);
         }
 
         http_response_code(200);

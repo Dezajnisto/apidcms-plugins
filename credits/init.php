@@ -2,11 +2,13 @@
 /**
  * Credits Plugin — init.php
  *
- * Hook contracts:
+ * Uses universal payment hooks (payments.*):
+ *   Filter:  payments.create_payment — gateways respond with payment URL
+ *   Action:  payments.confirmed — payment succeeded (filters by metadata.type === 'credits')
+ *   Action:  payments.return — user returned from bank page
+ *
+ * Own hooks:
  *   Filter:  credits.can_deduct     — default: check balance >= amount
- *   Filter:  credits.create_payment — gateways respond with payment URL
- *   Action:  credits.payment.confirmed — gateways call on success (metadata.type === 'credits')
- *   Action:  credits.payment.canceled  — gateways call on cancel
  *   Action:  credits.balance_changed   — fired after any balance change
  *
  * Listens to:
@@ -135,7 +137,7 @@ $pm->addAction('front.router.before', function ($path, $fc) {
             ]
         ];
 
-        $result = $pmLocal->applyFilters('credits.create_payment', null, $paymentData, $fc);
+        $result = $pmLocal->applyFilters('payments.create_payment', null, $paymentData, $fc);
 
         if (is_array($result) && !empty($result['error'])) {
             error_log('Credits: payment creation failed: ' . $result['error']);
@@ -182,9 +184,9 @@ $pm->addFilter('credits.can_deduct', function ($current, int $userId, int $amoun
     return $balance >= $amount;
 }, 100, 'credits');
 
-// === Action: credits.payment.confirmed ===
+// === Action: payments.confirmed (filter by metadata.type === 'credits') ===
 
-$pm->addAction('credits.payment.confirmed', function ($payment) {
+$pm->addAction('payments.confirmed', function ($payment) {
     $metadata = $payment['metadata'] ?? [];
 
     // Only handle credits payments
@@ -207,6 +209,17 @@ $pm->addAction('credits.payment.confirmed', function ($payment) {
     } catch (\Exception $e) {
         error_log('Credits: payment.confirmed failed: ' . $e->getMessage());
     }
+}, 10, 'credits');
+
+// === Action: payments.return (redirect to credits history) ===
+
+$pm->addAction('payments.return', function ($fc) {
+    if (empty($_SESSION['user_id'])) {
+        header('Location: /');
+        exit;
+    }
+    header('Location: /credits/history');
+    exit;
 }, 10, 'credits');
 
 // === Action: subscription.activated (bonus credits) ===

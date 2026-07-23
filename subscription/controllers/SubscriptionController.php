@@ -169,13 +169,14 @@ class Controller
             ],
             'description' => $plan['name'] . ' - ' . self::formatDuration($plan['duration_days']),
             'metadata' => [
+                'type' => 'subscription',
                 'user_id' => (string)$_SESSION['user_id'],
                 'plan_slug' => $plan['slug'],
                 'subscription_id' => (string)$subscriptionId
             ]
         ];
 
-        $result = $pm->applyFilters('subscription.create_payment', null, $paymentData, $fc);
+        $result = $pm->applyFilters('payments.create_payment', null, $paymentData, $fc);
 
         if (is_array($result) && !empty($result['error'])) {
             error_log('Subscription: payment creation failed: ' . $result['error']);
@@ -288,14 +289,14 @@ class Controller
         )->fetch();
 
         if (!$subscription) {
-            header('Location: /profile?error=no_subscription');
-            exit;
+            // Not a subscription return — let other handlers (e.g. credits) process it
+            return;
         }
 
         // Ask gateways to check payment status
         if ($subscription['payment_id']) {
             $pm = \Core\PluginManager::getInstance();
-            $payment = $pm->applyFilters('subscription.check_payment', null, $subscription['payment_id'], $fc);
+            $payment = $pm->applyFilters('payments.check_payment', null, $subscription['payment_id'], $fc);
 
             if (is_array($payment) && isset($payment['status'])) {
                 if ($payment['status'] === 'succeeded') {

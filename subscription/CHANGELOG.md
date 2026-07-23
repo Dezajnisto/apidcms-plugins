@@ -1,5 +1,16 @@
 # Subscription Plugin — Changelog
 
+## 1.4.0 — 2026-07-23
+
+### Changed (BREAKING)
+
+- **Migrated to universal payment hooks.** Uses `payments.*` instead of `subscription.*`:
+  - Calls `payments.create_payment` with `metadata.type = 'subscription'`
+  - Calls `payments.check_payment` for return status checks
+  - Listens to `payments.confirmed` (filters by `metadata.type === 'subscription'`)
+  - Listens to `payments.return` (checks for pending subscription before acting)
+- `onPaymentReturn()` no longer redirects on "no subscription" — silently returns, letting other plugins handle their returns
+
 ## 1.3.2 — 2026-07-23
 
 ### New

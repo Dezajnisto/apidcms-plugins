@@ -1,5 +1,18 @@
 # YooKassa Plugin — Changelog
 
+## 1.2.0 — 2026-07-23
+
+### Changed (BREAKING)
+
+- **Universal payment hooks.** Replaced plugin-specific hooks with `payments.*` namespace:
+  - `subscription.create_payment` / `credits.create_payment` → `payments.create_payment`
+  - `subscription.check_payment` → `payments.check_payment`
+  - `subscription.payment.confirmed` / `credits.payment.confirmed` → `payments.confirmed`
+  - `subscription.payment.canceled` / `credits.payment.canceled` → `payments.canceled`
+  - `subscription.payment.return` → `payments.return`
+- YooKassa no longer knows about payment consumers. Any plugin can use `payments.*` hooks.
+- Consumers identify their payments via `metadata.type` field.
+
 ## 1.1.0 — 2026-07-23
 
 ### New

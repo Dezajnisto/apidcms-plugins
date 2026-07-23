@@ -1,6 +1,6 @@
 {
     "name": "subscription",
-    "version": "1.3.2",
+    "version": "1.4.0",
     "description": "Подписки на контент: тарифы, уровни доступа, абонентская логика",
     "enabled": true,
     "dependencies": [

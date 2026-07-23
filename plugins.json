@@ -17,7 +17,8 @@
         "profile",
         "registration"
       ],
-      "min_cms_version": "1.0.0"
+      "min_cms_version": "1.0.0",
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/account/README.md"
     },
     {
       "name": "cart",
@@ -34,7 +35,8 @@
         "checkout",
         "ajax"
       ],
-      "min_cms_version": "1.0.0"
+      "min_cms_version": "1.0.0",
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/cart/README.md"
     },
     {
       "name": "subscription",
@@ -53,7 +55,8 @@
         "yookassa",
         "monetization"
       ],
-      "min_cms_version": "1.0.0"
+      "min_cms_version": "1.0.0",
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/subscription/README.md"
     },
     {
       "name": "credits",
@@ -73,7 +76,8 @@
         "monetization",
         "ledger"
       ],
-      "min_cms_version": "1.0.0"
+      "min_cms_version": "1.0.0",
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/credits/README.md"
     },
     {
       "name": "yookassa",
@@ -90,7 +94,8 @@
         "gateway",
         "checkout"
       ],
-      "min_cms_version": "1.0.0"
+      "min_cms_version": "1.0.0",
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/yookassa/README.md"
     }
   ]
 }

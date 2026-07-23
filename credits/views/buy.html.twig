@@ -1,0 +1,34 @@
+{# Credits Plugin — Buy page #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Купить кредиты{% endblock %}
+
+{% block content %}
+<div class="credits-buy">
+    <h1>Купить кредиты</h1>
+
+    <p>Ваш баланс: <strong>{{ balance }} {{ currency_name }}</strong></p>
+
+    {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if rates is empty %}
+        <p>Нет доступных тарифов.</p>
+    {% else %}
+        <div class="credits-rates">
+            {% for i, rate in rates %}
+                <div class="rate-card">
+                    <div class="rate-credits">{{ rate.credits }} {{ currency_name }}</div>
+                    <div class="rate-price">{{ rate.amount_rub }} ₽</div>
+                    <form method="POST" action="/credits/buy/{{ i }}">
+                        <button type="submit" class="btn btn-primary">Купить</button>
+                    </form>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <p><a href="/credits/history">История операций</a></p>
+</div>
+{% endblock %}

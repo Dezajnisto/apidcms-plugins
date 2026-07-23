@@ -1,0 +1,30 @@
+{
+    "name": "credits",
+    "version": "1.0.0",
+    "description": "User credit balance: immutable ledger, purchase, bonus, deduction. Foundation for pay-per-use features.",
+    "enabled": true,
+    "dependencies": ["account"],
+    "settings": [
+        {
+            "key": "credits_currency_name",
+            "type": "text",
+            "value": "кредитов",
+            "label": "Название валюты (родительный падеж)",
+            "description": "Как называть кредиты: 'монет', 'байтов', 'кредитов'"
+        },
+        {
+            "key": "credits_purchase_enabled",
+            "type": "checkbox",
+            "value": false,
+            "label": "Прямая покупка кредитов",
+            "description": "Пользователи могут покупать кредиты напрямую через платёжный шлюз"
+        },
+        {
+            "key": "credits_purchase_rates",
+            "type": "textarea",
+            "value": "[{\"amount_rub\":100,\"credits\":100},{\"amount_rub\":500,\"credits\":600}]",
+            "label": "Тарифы покупки (JSON)",
+            "description": "Массив объектов: amount_rub (рубли), credits (кредиты)"
+        }
+    ]
+}

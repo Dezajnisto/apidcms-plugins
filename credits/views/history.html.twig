@@ -1,0 +1,41 @@
+{# Credits Plugin — History page #}
+{% extends 'base.html.twig' %}
+
+{% block title %}История кредитов{% endblock %}
+
+{% block content %}
+<div class="credits-history">
+    <h1>История операций</h1>
+
+    <p>Баланс: <strong>{{ balance }} {{ currency_name }}</strong></p>
+
+    {% if history is empty %}
+        <p>Операций пока нет.</p>
+    {% else %}
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Операция</th>
+                    <th>Сумма</th>
+                    <th>Баланс</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for tx in history %}
+                    <tr>
+                        <td>{{ tx.created_at }}</td>
+                        <td>{{ tx.description ?: tx.type }}</td>
+                        <td class="{{ tx.amount > 0 ? 'positive' : 'negative' }}">
+                            {{ tx.amount > 0 ? '+' : '' }}{{ tx.amount }}
+                        </td>
+                        <td>{{ tx.balance_after }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+
+    <p><a href="/credits/buy">Купить кредиты</a> | <a href="/profile">Профиль</a></p>
+</div>
+{% endblock %}

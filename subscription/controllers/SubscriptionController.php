@@ -228,6 +228,19 @@ class Controller
                 "UPDATE user_subscriptions SET status = 'active', started_at = datetime('now'), expires_at = ? WHERE id = ?",
                 [$expiresAt, $subscription['id']]
             );
+
+            // Reload subscription with updated data
+            $activated = $db->query(
+                "SELECT us.*, sp.slug as plan_slug, sp.name as plan_name, sp.features as plan_features
+                 FROM user_subscriptions us JOIN subscription_plans sp ON us.plan_id = sp.id
+                 WHERE us.id = ?",
+                [$subscription['id']]
+            )->fetch();
+
+            if ($activated) {
+                $pm = \Core\PluginManager::getInstance();
+                $pm->doAction('subscription.activated', $activated, $fc);
+            }
         }
     }
 
@@ -312,6 +325,20 @@ class Controller
             "INSERT INTO user_subscriptions (user_id, plan_id, status, amount, started_at, expires_at, payment_id) VALUES (?, ?, 'active', ?, datetime('now'), ?, 'free_' || datetime('now'))",
             [$userId, $plan['id'], $plan['price'], $expiresAt]
         );
+
+        // Fire subscription.activated for free plans too (bonus credits, etc.)
+        $subId = $db->query("SELECT last_insert_rowid()")->fetchColumn();
+        $activated = $db->query(
+            "SELECT us.*, sp.slug as plan_slug, sp.name as plan_name, sp.features as plan_features
+             FROM user_subscriptions us JOIN subscription_plans sp ON us.plan_id = sp.id
+             WHERE us.id = ?",
+            [$subId]
+        )->fetch();
+
+        if ($activated) {
+            $pm = \Core\PluginManager::getInstance();
+            $pm->doAction('subscription.activated', $activated, null);
+        }
     }
 
     /**

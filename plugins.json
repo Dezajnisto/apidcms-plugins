@@ -38,7 +38,7 @@
     },
     {
       "name": "subscription",
-      "version": "1.3.1",
+      "version": "1.3.2",
       "title": "Subscription (Подписки)",
       "description": "Тарифы, подписки и защищённый доступ. Одноразовые триалы, работа с любым платёжным шлюзом.",
       "icon": "⭐",
@@ -56,10 +56,30 @@
       "min_cms_version": "1.0.0"
     },
     {
-      "name": "yookassa",
+      "name": "credits",
       "version": "1.0.0",
+      "title": "Credits (Кредиты)",
+      "description": "Баланс пользователя и immutable-ledger транзакций. Прямая покупка кредитов, бонусы от подписок, pay-per-use.",
+      "icon": "💰",
+      "author": "@apidcms-team",
+      "category": "monetization",
+      "dependencies": [
+        "account"
+      ],
+      "tags": [
+        "credits",
+        "balance",
+        "pay-per-use",
+        "monetization",
+        "ledger"
+      ],
+      "min_cms_version": "1.0.0"
+    },
+    {
+      "name": "yookassa",
+      "version": "1.1.0",
       "title": "YooKassa (Платёжный шлюз)",
-      "description": "Приём платежей через YooKassa API. Плагин-шлюз для subscription, cart и других плагинов.",
+      "description": "Приём платежей через YooKassa API. Плагин-шлюз для subscription, cart, credits и других плагинов.",
       "icon": "💳",
       "author": "@apidcms-team",
       "category": "payments",

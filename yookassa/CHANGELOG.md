@@ -1,5 +1,18 @@
 # YooKassa Plugin — Changelog
 
+## 1.1.0 — 2026-07-23
+
+### New
+
+- **Credits plugin integration:** implements `credits.create_payment` filter for direct credit purchases
+- **credits.payment.confirmed/canceled** dispatched in webhook handler alongside subscription events
+- **Return routing:** `/yookassa/return?from=credits` redirects to credits history page
+
+### Files
+
+- `init.php` — `credits.create_payment` filter, return routing with `from` param
+- `controllers/Service.php` — `credits.payment.*` actions in `handleWebhook()`
+
 ## 1.0.0 — 2026-07-22
 
 ### Initial release

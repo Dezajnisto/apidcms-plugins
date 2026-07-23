@@ -1,5 +1,16 @@
 # Subscription Plugin — Changelog
 
+## 1.3.2 — 2026-07-23
+
+### New
+
+- **subscription.activated hook** — fires when a subscription is activated (both paid and free). Other plugins (like Credits) can listen for bonus awards.
+- Credits plugin integration: subscription activation now emits `subscription.activated` action with full subscription + plan data.
+
+### Files
+
+- `controllers/SubscriptionController.php` — `subscription.activated` action in `onPaymentConfirmed()` and `activateFreeSubscription()`
+
 ## 1.3.1 — 2026-07-22
 
 ### New

@@ -80,6 +80,18 @@
       "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/credits/README.md"
     },
     {
+      "name": "favorites",
+      "version": "1.0.0",
+      "title": "Favorites (Избранное)",
+      "description": "Универсальные закладки для любого контента. Кнопка-сердечко в карточках, панель в профиле, toggle API.",
+      "icon": "❤️",
+      "author": "@apidcms-team",
+      "category": "users",
+      "dependencies": ["account"],
+      "tags": ["favorites", "bookmarks", "heart", "profile"],
+      "min_cms_version": "1.0.0"
+    },
+    {
       "name": "yookassa",
       "version": "1.2.0",
       "title": "YooKassa (Платёжный шлюз)",

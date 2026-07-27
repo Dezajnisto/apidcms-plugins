@@ -23,7 +23,7 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
     }
 }, 10, 'favorites');
 
-require_once $pluginDir . '/FavoritesController.php';
+require_once $pluginDir . '/controllers/FavoritesController.php';
 
 // === Twig functions ===
 $pm->addAction('twig.init', function ($fc, $twig) {

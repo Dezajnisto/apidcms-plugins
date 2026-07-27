@@ -19,5 +19,6 @@
             "label": "YooKassa Secret Key",
             "description": "Секретный ключ API YooKassa"
         }
-    ]
+    ],
+    "tables": []
 }

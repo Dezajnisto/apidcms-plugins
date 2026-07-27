@@ -3,7 +3,9 @@
     "version": "1.0.0",
     "description": "User credit balance: immutable ledger, purchase, bonus, deduction. Foundation for pay-per-use features.",
     "enabled": true,
-    "dependencies": ["account"],
+    "dependencies": [
+        "account"
+    ],
     "settings": [
         {
             "key": "credits_currency_name",
@@ -26,5 +28,9 @@
             "label": "Тарифы покупки (JSON)",
             "description": "Массив объектов: amount_rub (рубли), credits (кредиты)"
         }
+    ],
+    "tables": [
+        "user_balances",
+        "credit_transactions"
     ]
 }

@@ -6,5 +6,9 @@
     "dependencies": [
         "account"
     ],
-    "settings": []
+    "settings": [],
+    "tables": [
+        "subscription_plans",
+        "user_subscriptions"
+    ]
 }

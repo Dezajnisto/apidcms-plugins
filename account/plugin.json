@@ -8,7 +8,10 @@
         "login": "/login",
         "register": "/register",
         "profile": "/profile",
-        "logout": "/logout"
+        "logout": "/logout",
+        "forgot": "/account/forgot",
+        "reset": "/account/reset",
+        "change-password": "/account/change-password"
     },
     "settings": [
         {
@@ -24,8 +27,21 @@
             "value": "user",
             "label": "Роль по умолчанию",
             "description": "Роль, назначаемая новым пользователям"
+        },
+        {
+            "key": "reset_token_ttl",
+            "type": "select",
+            "value": "3600",
+            "label": "Срок действия ссылки",
+            "description": "Через сколько истекает ссылка для входа",
+            "options": {
+                "3600": "1 час",
+                "86400": "24 часа",
+                "604800": "7 дней"
+            }
         }
     ],
+    "path": "/home/c91469/apidcms.dezajno.ru/www/plugins/account",
     "tables": [
         "users",
         "user_tokens"

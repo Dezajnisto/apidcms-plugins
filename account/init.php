@@ -98,6 +98,15 @@ $pm->addAction('front.router.before', function ($path, $frontController) use ($p
         case 'logout':
             \Plugins\Account\Controller::logout($frontController);
             exit;
+        case 'account/forgot':
+            \Plugins\Account\Controller::forgot($frontController);
+            exit;
+        case 'account/reset':
+            \Plugins\Account\Controller::reset($frontController);
+            exit;
+        case 'account/change-password':
+            \Plugins\Account\Controller::changePassword($frontController);
+            exit;
     }
 }, 20, 'account');
 

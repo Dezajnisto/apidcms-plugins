@@ -1,82 +1,47 @@
 # Account — User Profile
 
-User plugin for [apidcms](https://github.com/Dezajnisto/apidcms): registration, login, remember-me and profile.
+Adds registration, login and user profile to your site.
 
 ## Features
 
-- New user registration with email and password
-- Login with remember-me token
-- Session middleware on every request
-- Password hashing via `password_hash()` (bcrypt)
-- User profile with name, phone, avatar editing
-- Optional email confirmation
-- Twig functions: `is_logged_in()`, `current_user()`
-
-## Dependencies
-
-None. This is a foundation plugin, depended on by:
-
-- **cart** — links cart to user
-- **subscription** — links subscriptions
-- **credits** — links balance
-
-## Installation
-
-1. Copy the `account/` folder into your project's `plugins/`
-2. Admin panel: Plugins → Account → Activate
-3. The plugin auto-creates `users` and `user_tokens` tables
-4. Open `/register` to test registration
-
-## Settings
-
-| Key | Type | Default | Description |
-|-----|------|---------|-------------|
-| `require_email_confirm` | checkbox | false | Require email confirmation on registration |
-| `default_role` | text | user | Role assigned to new users |
-
-## Created Tables
-
-### users
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INTEGER PK | — |
-| email | TEXT UNIQUE | User email |
-| password_hash | TEXT | bcrypt password hash |
-| name | TEXT | User name |
-| phone | TEXT | Phone number |
-| avatar | TEXT | Avatar URL |
-| status | TEXT | active / blocked |
-
-### user_tokens
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | INTEGER PK | — |
-| user_id | INTEGER FK | → users.id |
-| token | TEXT UNIQUE | Remember-me token |
-| type | TEXT | Token type |
-| expires_at | DATETIME | Expiration |
+- **Registration:** email, name, phone, password (bcrypt)
+- **Login:** email + password, Remember-me (30-day cookie)
+- **Password recovery:** magic-link via email (one-time token)
+- **Password change:** for authenticated users
+- **Profile:** view and edit name, phone number
+- **Twig functions:** `is_logged_in()`, `current_user()`
 
 ## Routes
 
-| URL | Description |
-|-----|-------------|
-| `/login` | Login page |
-| `/register` | Registration page |
-| `/profile` | User profile |
+| Path | Action |
+|------|--------|
+| `/register` | Registration |
+| `/login` | Login |
+| `/account/forgot` | Password recovery |
+| `/account/reset?token=***` | Magic-link login |
+| `/profile` | Profile |
+| `/account/change-password` | Change password |
 | `/logout` | Logout |
 
-## Twig
+## Settings
 
-```twig
-{% if is_logged_in() %}
-  Hello, {{ current_user().name }}!
-{% else %}
-  <a href="/login">Sign in</a>
-{% endif %}
-```
+- `require_email_confirm` — require email confirmation (in development)
+- `default_role` — default role for new users
+- `reset_token_ttl` — magic-link expiry (1h / 24h / 7d)
 
-## License
+## Tables
 
-MIT
+- `users` — user accounts
+- `user_tokens` — tokens (remember-me, password-reset)
+
+## Requirements
+
+- apidcms >= 1.0.0
+- Configured email (`email_driver`, `email_from_*`) for magic-link
+
+## Security
+
+- bcrypt password hashing
+- Tokens: 64 chars (random_bytes), single-use
+- Rate-limit: one active reset token per email
+- Generic messages (doesn't reveal email existence)

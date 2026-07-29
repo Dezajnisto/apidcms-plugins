@@ -279,4 +279,293 @@ class Controller
             ]);
         }
     }
+
+    /**
+     * Страница «Забыли пароль» — отправка magic-link
+     */
+    public static function forgot($fc)
+    {
+        if (!empty($_SESSION['user_id'])) {
+            header('Location: /profile');
+            exit;
+        }
+
+        $error = null;
+        $email = '';
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $email = trim($_POST['email'] ?? '');
+
+            if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $error = 'Укажите корректный email';
+            } else {
+                $db = self::getDb($fc);
+
+                // Check rate limit: existing valid token for this email
+                $existing = $db->query(
+                    "SELECT t.id FROM user_tokens t
+                     JOIN users u ON t.user_id = u.id
+                     WHERE u.email = ? AND t.type = 'password_reset'
+                     AND t.expires_at > datetime('now')",
+                    [$email]
+                )->fetch();
+
+                if ($existing) {
+                    // Already sent — show same generic message
+                    return self::renderForgotSent($fc);
+                }
+
+                $user = $db->query(
+                    "SELECT * FROM users WHERE email = ? AND status = 'active'",
+                    [$email]
+                )->fetch();
+
+                if ($user) {
+                    $ttl = self::getResetTokenTtl($db);
+                    $token = bin2hex(random_bytes(32));
+                    $expiresAt = date('Y-m-d H:i:s', time() + $ttl);
+
+                    $db->insert('user_tokens', [
+                        'user_id' => $user['id'],
+                        'token' => $token,
+                        'type' => 'password_reset',
+                        'expires_at' => $expiresAt
+                    ]);
+
+                    self::sendResetEmail($fc, $user, $token, $ttl);
+                }
+
+                return self::renderForgotSent($fc);
+            }
+        }
+
+        // GET — show form
+        self::renderPlugin($fc, '@account/forgot.html.twig', [
+            'title' => 'Восстановление доступа',
+            'error' => $error,
+            'email' => $email
+        ]);
+    }
+
+    /**
+     * Показать страницу «Проверьте почту»
+     */
+    private static function renderForgotSent($fc)
+    {
+        $db = self::getDb($fc);
+        $ttl = self::getResetTokenTtl($db);
+        $ttlText = $ttl >= 86400 ? round($ttl / 86400) . ' дн.' : round($ttl / 3600) . ' ч.';
+
+        self::renderPlugin($fc, '@account/forgot_sent.html.twig', [
+            'title' => 'Проверьте почту',
+            'ttl_text' => $ttlText
+        ]);
+    }
+
+    /**
+     * Magic-link: проверка токена и вход
+     */
+    public static function reset($fc)
+    {
+        $token = $_GET['token'] ?? '';
+
+        if (empty($token)) {
+            header('Location: /login');
+            exit;
+        }
+
+        $db = self::getDb($fc);
+
+        $tokenRow = $db->query(
+            "SELECT * FROM user_tokens WHERE token = ? AND type = 'password_reset' AND expires_at > datetime('now')",
+            [$token]
+        )->fetch();
+
+        if (!$tokenRow) {
+            // Token invalid or expired
+            self::renderPlugin($fc, '@account/forgot.html.twig', [
+                'title' => 'Восстановление доступа',
+                'error' => 'Ссылка недействительна или истекла. Запросите новую.',
+                'email' => ''
+            ]);
+            return;
+        }
+
+        $user = $db->query(
+            "SELECT * FROM users WHERE id = ? AND status = 'active'",
+            [$tokenRow['user_id']]
+        )->fetch();
+
+        if (!$user) {
+            header('Location: /login');
+            exit;
+        }
+
+        // Delete the used token
+        $db->query("DELETE FROM user_tokens WHERE id = ?", [$tokenRow['id']]);
+
+        // Log user in
+        self::startUserSession($user, false, $db);
+
+        header('Location: /profile');
+        exit;
+    }
+
+    /**
+     * Смена пароля (для авторизованных)
+     */
+    public static function changePassword($fc)
+    {
+        if (empty($_SESSION['user_id'])) {
+            header('Location: /login');
+            exit;
+        }
+
+        $error = null;
+        $success = null;
+        $db = self::getDb($fc);
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $currentPassword = $_POST['current_password'] ?? '';
+            $newPassword = $_POST['new_password'] ?? '';
+            $newPassword2 = $_POST['new_password2'] ?? '';
+
+            // Validation
+            if (empty($currentPassword) || empty($newPassword)) {
+                $error = 'Заполните все поля';
+            } elseif (strlen($newPassword) < 6) {
+                $error = 'Новый пароль должен быть не менее 6 символов';
+            } elseif ($newPassword !== $newPassword2) {
+                $error = 'Новые пароли не совпадают';
+            } else {
+                $user = $db->query(
+                    "SELECT * FROM users WHERE id = ?",
+                    [$_SESSION['user_id']]
+                )->fetch();
+
+                if (!$user || !password_verify($currentPassword, $user['password_hash'])) {
+                    $error = 'Неверный текущий пароль';
+                } else {
+                    $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+                    $db->update('users', ['password_hash' => $newHash], 'id = ?', [$_SESSION['user_id']]);
+                    $success = 'Пароль успешно изменён';
+                }
+            }
+        }
+
+        self::renderPlugin($fc, '@account/change_password.html.twig', [
+            'title' => 'Смена пароля',
+            'error' => $error,
+            'success' => $success
+        ]);
+    }
+
+    /**
+     * Получить TTL токена сброса из настроек плагина
+     */
+    private static function getResetTokenTtl($db)
+    {
+        $ttl = 3600; // default 1 hour
+        try {
+            $result = $db->query(
+                "SELECT setting_value FROM system_settings WHERE setting_key = 'plugin_account_reset_token_ttl'"
+            )->fetch();
+            if ($result && is_numeric($result['setting_value'])) {
+                $ttl = max(300, min(604800, (int)$result['setting_value'])); // 5 min .. 7 days
+            }
+        } catch (\Exception $e) {
+            // Use default
+        }
+        return $ttl;
+    }
+
+    /**
+     * Отправить письмо с magic-link
+     */
+    private static function sendResetEmail($fc, $user, $token, $ttl)
+    {
+        $db = self::getDb($fc);
+
+        // Read email settings from core
+        try {
+            $driverResult = $db->query(
+                "SELECT setting_value FROM system_settings WHERE setting_key = 'email_driver'"
+            )->fetch();
+            $driver = $driverResult['setting_value'] ?? 'mail';
+
+            $fromEmailResult = $db->query(
+                "SELECT setting_value FROM system_settings WHERE setting_key = 'email_from_email'"
+            )->fetch();
+            $fromEmail = $fromEmailResult['setting_value'] ?? '';
+
+            $fromNameResult = $db->query(
+                "SELECT setting_value FROM system_settings WHERE setting_key = 'email_from_name'"
+            )->fetch();
+            $fromName = $fromNameResult['setting_value'] ?? '';
+
+            $siteTitleResult = $db->query(
+                "SELECT setting_value FROM system_settings WHERE setting_key = 'site_title'"
+            )->fetch();
+            $siteTitle = $siteTitleResult['setting_value'] ?? ($_SERVER['HTTP_HOST'] ?? 'Site');
+
+            // Build EmailSender config
+            $config = [
+                'driver' => $driver,
+                'from' => [
+                    'email' => $fromEmail,
+                    'name' => $fromName
+                ]
+            ];
+
+            // Add API/SMTP settings based on driver
+            if ($driver === 'api') {
+                $apiKeyResult = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'email_api_key'")->fetch();
+                $apiEndpointResult = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'email_api_endpoint'")->fetch();
+                $config['api'] = [
+                    'key' => $apiKeyResult['setting_value'] ?? '',
+                    'endpoint' => $apiEndpointResult['setting_value'] ?? ''
+                ];
+            } elseif ($driver === 'smtp') {
+                $smtpHost = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'email_smtp_host'")->fetch();
+                $smtpPort = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'email_smtp_port'")->fetch();
+                $smtpUser = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'email_smtp_username'")->fetch();
+                $smtpPass = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'email_smtp_password'")->fetch();
+                $smtpEnc = $db->query("SELECT setting_value FROM system_settings WHERE setting_key = 'email_smtp_encryption'")->fetch();
+                $config['smtp'] = [
+                    'host' => $smtpHost['setting_value'] ?? '',
+                    'port' => $smtpPort['setting_value'] ?? '587',
+                    'username' => $smtpUser['setting_value'] ?? '',
+                    'password' => $smtpPass['setting_value'] ?? '',
+                    'encryption' => $smtpEnc['setting_value'] ?? 'tls'
+                ];
+            }
+
+            // Render email template
+            $resetUrl = ($_SERVER['HTTPS'] ?? 'off' === 'on' ? 'https' : 'http')
+                . '://' . ($_SERVER['HTTP_HOST'] ?? 'localhost')
+                . '/account/reset?token=' . $token;
+
+            $ttlText = $ttl >= 86400 ? round($ttl / 86400) . ' дн.' : round($ttl / 3600) . ' ч.';
+
+            // Get Twig from FrontController to render email
+            $ref = new \ReflectionClass($fc);
+            $twigProp = $ref->getProperty('twig');
+            $twigProp->setAccessible(true);
+            $twig = $twigProp->getValue($fc);
+
+            $htmlBody = $twig->render('@account/email_reset.html.twig', [
+                'site_title' => $siteTitle,
+                'reset_url' => $resetUrl,
+                'ttl_text' => $ttlText
+            ]);
+
+            $emailSender = new \Core\EmailSender($config);
+            $emailSender->send($user['email'], 'Вход на сайт ' . $siteTitle, $htmlBody, true);
+
+        } catch (\Exception $e) {
+            error_log("Account plugin: failed to send reset email: " . $e->getMessage());
+            // Fail silently — user still sees "check your email" page
+        }
+    }
+
 }

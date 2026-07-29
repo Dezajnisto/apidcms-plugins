@@ -4,14 +4,14 @@
   "plugins": [
     {
       "name": "account",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "title": {
-        "ru": "Account (Личный кабинет)",
-        "en": "Account (User Profile)"
+        "ru": "Account — Личный кабинет",
+        "en": "Account — User Profile"
       },
       "description": {
-        "ru": "Регистрация, авторизация, remember-me и профиль пользователя для вашего сайта.",
-        "en": "Registration, login, remember-me and user profile for your website."
+        "ru": "Регистрация, авторизация, remember-me, magic-link восстановление и профиль пользователя.",
+        "en": "Registration, login, remember-me, magic-link recovery and user profile."
       },
       "icon": "👤",
       "author": "@apidcms-team",
@@ -21,7 +21,9 @@
         "auth",
         "login",
         "profile",
-        "registration"
+        "registration",
+        "password-reset",
+        "magic-link"
       ],
       "min_cms_version": "1.0.0",
       "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/account/README.md",

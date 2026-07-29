@@ -5,8 +5,14 @@
     {
       "name": "account",
       "version": "1.0.0",
-      "title": "Account (Личный кабинет)",
-      "description": "Регистрация, авторизация, remember-me и профиль пользователя для вашего сайта.",
+      "title": {
+        "ru": "Account (Личный кабинет)",
+        "en": "Account (User Profile)"
+      },
+      "description": {
+        "ru": "Регистрация, авторизация, remember-me и профиль пользователя для вашего сайта.",
+        "en": "Registration, login, remember-me and user profile for your website."
+      },
       "icon": "👤",
       "author": "@apidcms-team",
       "category": "users",
@@ -18,13 +24,20 @@
         "registration"
       ],
       "min_cms_version": "1.0.0",
-      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/account/README.md"
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/account/README.md",
+      "content_url_en": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/account/README.en.md"
     },
     {
       "name": "cart",
       "version": "1.0.0",
-      "title": "Cart (Корзина товаров)",
-      "description": "Полноценная корзина с AJAX-добавлением и чекаутом для вашего магазина.",
+      "title": {
+        "ru": "Cart (Корзина товаров)",
+        "en": "Cart (Shopping Cart)"
+      },
+      "description": {
+        "ru": "Полноценная корзина с AJAX-добавлением и чекаутом для вашего магазина.",
+        "en": "Full-featured shopping cart with AJAX add-to-cart and checkout for your store."
+      },
       "icon": "🛒",
       "author": "@apidcms-team",
       "category": "ecommerce",
@@ -36,13 +49,20 @@
         "ajax"
       ],
       "min_cms_version": "1.0.0",
-      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/cart/README.md"
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/cart/README.md",
+      "content_url_en": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/cart/README.en.md"
     },
     {
       "name": "subscription",
       "version": "1.4.0",
-      "title": "Subscription (Подписки)",
-      "description": "Тарифы, подписки и защищённый доступ. Одноразовые триалы, работа с любым платёжным шлюзом.",
+      "title": {
+        "ru": "Subscription (Подписки)",
+        "en": "Subscription (Memberships)"
+      },
+      "description": {
+        "ru": "Тарифы, подписки и защищённый доступ. Одноразовые триалы, работа с любым платёжным шлюзом.",
+        "en": "Plans, subscriptions and gated access. One-time trials, works with any payment gateway."
+      },
       "icon": "⭐",
       "author": "@apidcms-team",
       "category": "monetization",
@@ -56,13 +76,20 @@
         "monetization"
       ],
       "min_cms_version": "1.0.0",
-      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/subscription/README.md"
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/subscription/README.md",
+      "content_url_en": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/subscription/README.en.md"
     },
     {
       "name": "credits",
       "version": "1.0.0",
-      "title": "Credits (Кредиты)",
-      "description": "Баланс пользователя и immutable-ledger транзакций. Прямая покупка кредитов, бонусы от подписок, pay-per-use.",
+      "title": {
+        "ru": "Credits (Кредиты)",
+        "en": "Credits (Balance)"
+      },
+      "description": {
+        "ru": "Баланс пользователя и immutable-ledger транзакций. Прямая покупка кредитов, бонусы от подписок, pay-per-use.",
+        "en": "User balance and immutable transaction ledger. Direct credit purchases, subscription bonuses, pay-per-use."
+      },
       "icon": "💰",
       "author": "@apidcms-team",
       "category": "monetization",
@@ -77,26 +104,47 @@
         "ledger"
       ],
       "min_cms_version": "1.0.0",
-      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/credits/README.md"
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/credits/README.md",
+      "content_url_en": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/credits/README.en.md"
     },
     {
       "name": "favorites",
       "version": "1.0.0",
-      "title": "Favorites (Избранное)",
-      "description": "Универсальные закладки для любого контента. Кнопка-сердечко в карточках, панель в профиле, toggle API.",
+      "title": {
+        "ru": "Favorites (Избранное)",
+        "en": "Favorites (Bookmarks)"
+      },
+      "description": {
+        "ru": "Универсальные закладки для любого контента. Кнопка-сердечко в карточках, панель в профиле, toggle API.",
+        "en": "Universal bookmarks for any content. Heart button in cards, profile panel, toggle API."
+      },
       "icon": "❤️",
       "author": "@apidcms-team",
       "category": "users",
-      "dependencies": ["account"],
-      "tags": ["favorites", "bookmarks", "heart", "profile"],
+      "dependencies": [
+        "account"
+      ],
+      "tags": [
+        "favorites",
+        "bookmarks",
+        "heart",
+        "profile"
+      ],
       "min_cms_version": "1.0.0",
-      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/favorites/README.md"
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/favorites/README.md",
+      "content_url_en": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/favorites/README.en.md"
     },
     {
       "name": "yookassa",
       "version": "1.2.0",
-      "title": "YooKassa (Платёжный шлюз)",
-      "description": "Универсальный приём платежей через YooKassa API. Не зависит от плагинов-потребителей — любой плагин может использовать payments.* хуки.",
+      "title": {
+        "ru": "YooKassa (Платёжный шлюз)",
+        "en": "YooKassa (Payment Gateway)"
+      },
+      "description": {
+        "ru": "Универсальный приём платежей через YooKassa API. Не зависит от плагинов-потребителей — любой плагин может использовать payments.* хуки.",
+        "en": "Universal payment processing via YooKassa API. Independent of consumer plugins — any plugin can use payments.* hooks."
+      },
       "icon": "💳",
       "author": "@apidcms-team",
       "category": "payments",
@@ -108,7 +156,8 @@
         "checkout"
       ],
       "min_cms_version": "1.0.0",
-      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/yookassa/README.md"
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/yookassa/README.md",
+      "content_url_en": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/yookassa/README.en.md"
     }
   ]
 }

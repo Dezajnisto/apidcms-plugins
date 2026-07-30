@@ -1,49 +1,49 @@
 {
-    "name": "account",
-    "version": "1.0.0",
-    "description": "Личный кабинет: регистрация, авторизация, профиль",
-    "enabled": false,
-    "dependencies": [],
-    "routes": {
-        "login": "/login",
-        "register": "/register",
-        "profile": "/profile",
-        "logout": "/logout",
-        "forgot": "/account/forgot",
-        "reset": "/account/reset",
-        "change-password": "/account/change-password"
+  "name": "account",
+  "version": "1.0.1",
+  "description": "Личный кабинет: регистрация, авторизация, профиль",
+  "enabled": false,
+  "dependencies": [],
+  "routes": {
+    "login": "/login",
+    "register": "/register",
+    "profile": "/profile",
+    "logout": "/logout",
+    "forgot": "/account/forgot",
+    "reset": "/account/reset",
+    "change-password": "/account/change-password"
+  },
+  "settings": [
+    {
+      "key": "require_email_confirm",
+      "type": "checkbox",
+      "value": false,
+      "label": "Подтверждение email",
+      "description": "Требовать подтверждение email при регистрации"
     },
-    "settings": [
-        {
-            "key": "require_email_confirm",
-            "type": "checkbox",
-            "value": false,
-            "label": "Подтверждение email",
-            "description": "Требовать подтверждение email при регистрации"
-        },
-        {
-            "key": "default_role",
-            "type": "text",
-            "value": "user",
-            "label": "Роль по умолчанию",
-            "description": "Роль, назначаемая новым пользователям"
-        },
-        {
-            "key": "reset_token_ttl",
-            "type": "select",
-            "value": "3600",
-            "label": "Срок действия ссылки",
-            "description": "Через сколько истекает ссылка для входа",
-            "options": {
-                "3600": "1 час",
-                "86400": "24 часа",
-                "604800": "7 дней"
-            }
-        }
-    ],
-    "path": "/home/c91469/apidcms.dezajno.ru/www/plugins/account",
-    "tables": [
-        "plugin_account_users",
-        "plugin_account_tokens"
-    ]
+    {
+      "key": "default_role",
+      "type": "text",
+      "value": "user",
+      "label": "Роль по умолчанию",
+      "description": "Роль, назначаемая новым пользователям"
+    },
+    {
+      "key": "reset_token_ttl",
+      "type": "select",
+      "value": "3600",
+      "label": "Срок действия ссылки",
+      "description": "Через сколько истекает ссылка для входа",
+      "options": {
+        "3600": "1 час",
+        "86400": "24 часа",
+        "604800": "7 дней"
+      }
+    }
+  ],
+  "path": "/home/c91469/apidcms.dezajno.ru/www/plugins/account",
+  "tables": [
+    "plugin_account_users",
+    "plugin_account_tokens"
+  ]
 }

@@ -418,8 +418,18 @@ class Controller
             if (!defined('FRONT_ACCESS')) {
                 define('FRONT_ACCESS', true);
             }
-            $config = require __DIR__ . '/../../../front/config/config.php';
-            $db = new \Core\Database($config['database']);
+            if ($fc !== null && method_exists($fc, 'getDatabase')) {
+                $db = $fc->getDatabase();
+            } else {
+                // Legacy fallback: load config directly (v2 path)
+                if (!defined('FRONT_ACCESS')) {
+                    define('FRONT_ACCESS', true);
+                }
+                $config = require __DIR__ . '/../../../config/front.php';
+                $coreDefaults = require __DIR__ . '/../../../www/core/config/front.php';
+                $config = array_replace_recursive($coreDefaults, $config);
+                $db = new \Core\Database($config['database']);
+            }
         }
         return $db;
     }

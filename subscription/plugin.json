@@ -1,14 +1,14 @@
 {
-    "name": "subscription",
-    "version": "1.4.0",
-    "description": "Подписки на контент: тарифы, уровни доступа, абонентская логика",
-    "enabled": true,
-    "dependencies": [
-        "account"
-    ],
-    "settings": [],
-    "tables": [
-        "plugin_subscription_plans",
-        "plugin_subscription_subscriptions"
-    ]
+  "name": "subscription",
+  "version": "1.4.1",
+  "description": "Подписки на контент: тарифы, уровни доступа, абонентская логика",
+  "enabled": true,
+  "dependencies": [
+    "account"
+  ],
+  "settings": [],
+  "tables": [
+    "plugin_subscription_plans",
+    "plugin_subscription_subscriptions"
+  ]
 }

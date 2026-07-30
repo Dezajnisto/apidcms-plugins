@@ -107,7 +107,9 @@ JS;
         if (empty($favorites)) return [];
         $db = null;
         if (!defined('FRONT_ACCESS')) { define('FRONT_ACCESS', true); }
-        $config = require __DIR__ . '/../../front/config/config.php';
+        $config = require __DIR__ . '/../../config/front.php';
+        $coreDefaults = require __DIR__ . '/../../www/core/config/front.php';
+        $config = array_replace_recursive($coreDefaults, $config);
         $db = new \Core\Database($config['database']);
         $items = [];
         foreach ($favorites as $fav) {

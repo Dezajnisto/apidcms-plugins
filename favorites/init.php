@@ -20,10 +20,10 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
             try { $db->exec($stmt); }
             catch (\Exception $e) { error_log("favorites migration error: " . $e->getMessage()); }
         }
-
+    }
 
     // Schema verification: ensure all expected columns exist
-    \$expectedColumns = [
+    $expectedColumns = [
         'plugin_favorites_user_favorites' => [
             'id' => 'INTEGER',
             'user_id' => 'INTEGER',
@@ -33,21 +33,18 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
         ]
     ];
 
-    foreach (\$expectedColumns as \$table => \$columns) {
+    foreach ($expectedColumns as $table => $columns) {
         try {
-            \$existing = \$db->query("PRAGMA table_info(\"{\$table}\")")->fetchAll();
-            \$existingNames = array_column(\$existing, 'name');
-            foreach (\$columns as \$colName => \$colType) {
-                if (!in_array(\$colName, \$existingNames)) {
-                    \$db->exec("ALTER TABLE \"{\$table}\" ADD COLUMN \"{\$colName}\" {\$colType} DEFAULT ''");
-                    error_log("Favorites plugin: added missing column {\$table}.{\$colName}");
+            $existing = $db->query("PRAGMA table_info(\"{$table}\")")->fetchAll();
+            $existingNames = array_column($existing, 'name');
+            foreach ($columns as $colName => $colType) {
+                if (!in_array($colName, $existingNames)) {
+                    $db->exec("ALTER TABLE \"{$table}\" ADD COLUMN \"{$colName}\" {$colType} DEFAULT ''");
+                    error_log("Favorites plugin: added missing column {$table}.{$colName}");
                 }
             }
-        } catch (\Exception \$e) {
-            error_log("Favorites plugin schema verification error for {\$table}: " . \$e->getMessage());
-        }
-    }
-
+        } catch (\Exception $e) {
+            error_log("Favorites plugin schema verification error for {$table}: " . $e->getMessage());
         }
     }
 }, 10, 'favorites');

@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "account",
-      "version": "1.1.1",
+      "version": "1.1.2",
       "title": {
         "ru": "Account — Личный кабинет",
         "en": "Account — User Profile"
@@ -83,7 +83,7 @@
     },
     {
       "name": "credits",
-      "version": "1.0.1",
+      "version": "1.0.2",
       "title": {
         "ru": "Credits (Кредиты)",
         "en": "Credits (Balance)"

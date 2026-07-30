@@ -246,15 +246,20 @@ $pm->addAction('payments.confirmed', function ($payment) {
 }, 10, 'credits');
 
 // === Action: payments.return (redirect to credits history) ===
+// Only handle if credits purchase is enabled; subscription handler (priority 10) gets first crack
 
 $pm->addAction('payments.return', function ($fc) {
+    // Only redirect for credits purchases
+    if (!\Plugins\Credits\Service::getSetting('credits_purchase_enabled', false)) {
+        return; // let other handlers (e.g. subscription) process
+    }
     if (empty($_SESSION['user_id'])) {
         header('Location: /');
         exit;
     }
     header('Location: /credits/history');
     exit;
-}, 10, 'credits');
+}, 15, 'credits');
 
 // === Action: subscription.activated (bonus credits) ===
 
@@ -266,7 +271,7 @@ $pm->addAction('subscription.activated', function ($subscription, $fc) {
     try {
         $db = \Plugins\Credits\Service::getDb();
         $plan = $db->query(
-            "SELECT * FROM subscription_plans WHERE id = ?",
+            "SELECT * FROM plugin_subscription_plans WHERE id = ?",
             [$subscription['plan_id']]
         )->fetch();
 

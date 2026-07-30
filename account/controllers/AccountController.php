@@ -146,6 +146,31 @@ class Controller
         $error = null;
         $success = null;
 
+        // Read redirect params from subscription/payment flows
+        $redirectError = $_GET['error'] ?? null;
+        $redirectSuccess = $_GET['success'] ?? null;
+        $redirectSubscribed = $_GET['subscribed'] ?? null;
+        $redirectPending = $_GET['pending'] ?? null;
+
+        if ($redirectError) {
+            $errorMap = [
+                'payment_failed' => 'Не удалось создать платёж. Попробуйте позже или обратитесь в поддержку.',
+                'payment_canceled' => 'Платёж отменён.',
+                'no_payment_gateway' => 'Платёжный шлюз не настроен.',
+                'trial_used' => 'Вы уже использовали пробный период.',
+            ];
+            $error = $errorMap[$redirectError] ?? $redirectError;
+        }
+        if ($redirectSuccess) {
+            $success = $redirectSuccess;
+        }
+        if ($redirectSubscribed) {
+            $success = 'Подписка успешно оформлена!';
+        }
+        if ($redirectPending) {
+            $success = 'Платёж ожидает подтверждения. Подписка активируется автоматически.';
+        }
+
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');
             $phone = trim($_POST['phone'] ?? '');

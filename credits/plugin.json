@@ -30,7 +30,7 @@
         }
     ],
     "tables": [
-        "user_balances",
-        "credit_transactions"
+        "plugin_credits_user_balances",
+        "plugin_credits_transactions"
     ]
 }

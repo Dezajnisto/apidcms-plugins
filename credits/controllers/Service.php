@@ -27,7 +27,7 @@ class Service
         try {
             $db = self::getDb();
             $row = $db->query(
-                "SELECT balance FROM user_balances WHERE user_id = ?",
+                "SELECT balance FROM plugin_credits_user_balances WHERE user_id = ?",
                 [$userId]
             )->fetch();
             return $row ? (int)$row['balance'] : 0;
@@ -77,25 +77,25 @@ class Service
         try {
             // Ensure balance row exists
             $db->query(
-                "INSERT OR IGNORE INTO user_balances (user_id, balance) VALUES (?, 0)",
+                "INSERT OR IGNORE INTO plugin_credits_user_balances (user_id, balance) VALUES (?, 0)",
                 [$userId]
             );
 
             // Atomic update
             $db->query(
-                "UPDATE user_balances SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?",
+                "UPDATE plugin_credits_user_balances SET balance = balance + ?, updated_at = datetime('now') WHERE user_id = ?",
                 [$amount, $userId]
             );
 
             // Read new balance
             $newBalance = (int)$db->query(
-                "SELECT balance FROM user_balances WHERE user_id = ?",
+                "SELECT balance FROM plugin_credits_user_balances WHERE user_id = ?",
                 [$userId]
             )->fetchColumn();
 
             // Write ledger
             $db->query(
-                "INSERT INTO credit_transactions (user_id, amount, type, description, reference, balance_after) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO plugin_credits_transactions (user_id, amount, type, description, reference, balance_after) VALUES (?, ?, ?, ?, ?, ?)",
                 [$userId, $amount, $type, $desc, $ref, $newBalance]
             );
 
@@ -139,20 +139,20 @@ class Service
         try {
             // Atomic update (subtract)
             $db->query(
-                "UPDATE user_balances SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
+                "UPDATE plugin_credits_user_balances SET balance = balance - ?, updated_at = datetime('now') WHERE user_id = ? AND balance >= ?",
                 [$amount, $userId, $amount]
             );
 
             // Read new balance
             $newBalance = (int)$db->query(
-                "SELECT balance FROM user_balances WHERE user_id = ?",
+                "SELECT balance FROM plugin_credits_user_balances WHERE user_id = ?",
                 [$userId]
             )->fetchColumn();
 
             // Write ledger (negative amount)
             $negAmount = -$amount;
             $db->query(
-                "INSERT INTO credit_transactions (user_id, amount, type, description, reference, balance_after) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO plugin_credits_transactions (user_id, amount, type, description, reference, balance_after) VALUES (?, ?, ?, ?, ?, ?)",
                 [$userId, $negAmount, $type, $desc, $ref, $newBalance]
             );
 
@@ -179,7 +179,7 @@ class Service
         try {
             $db = self::getDb();
             return $db->query(
-                "SELECT * FROM credit_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
+                "SELECT * FROM plugin_credits_transactions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
                 [$userId, $limit]
             )->fetchAll();
         } catch (\Exception $e) {

@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS cart_items (
+CREATE TABLE IF NOT EXISTS plugin_cart_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER,
     session_id TEXT NOT NULL,
@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS cart_items (
     added_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_cart_session ON cart_items(session_id);
-CREATE INDEX IF NOT EXISTS idx_cart_user ON cart_items(user_id);
+CREATE INDEX IF NOT EXISTS idx_cart_session ON plugin_cart_items(session_id);
+CREATE INDEX IF NOT EXISTS idx_cart_user ON plugin_cart_items(user_id);

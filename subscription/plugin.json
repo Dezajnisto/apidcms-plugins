@@ -8,7 +8,7 @@
     ],
     "settings": [],
     "tables": [
-        "subscription_plans",
-        "user_subscriptions"
+        "plugin_subscription_plans",
+        "plugin_subscription_subscriptions"
     ]
 }

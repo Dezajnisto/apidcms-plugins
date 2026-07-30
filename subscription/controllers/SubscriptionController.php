@@ -102,7 +102,7 @@ class Controller
 
         $db = self::getDb($fc);
         $plan = $db->query(
-            "SELECT * FROM subscription_plans WHERE slug = ? AND is_active = 1",
+            "SELECT * FROM plugin_subscription_plans WHERE slug = ? AND is_active = 1",
             [$planSlug]
         )->fetch();
 
@@ -115,7 +115,7 @@ class Controller
         // Free plan — activate immediately
         if ((float)$plan['price'] == 0) {
             $existing = $db->query(
-                "SELECT id FROM user_subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now')",
+                "SELECT id FROM plugin_subscription_subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now')",
                 [$_SESSION['user_id']]
             )->fetch();
 
@@ -127,7 +127,7 @@ class Controller
             // trial_once check: one-time free/trial plans
             if (!empty($plan['trial_once'])) {
                 $hadTrial = $db->query(
-                    "SELECT id FROM user_subscriptions WHERE user_id = ? AND plan_id = ? AND status IN ('active','expired') LIMIT 1",
+                    "SELECT id FROM plugin_subscription_subscriptions WHERE user_id = ? AND plan_id = ? AND status IN ('active','expired') LIMIT 1",
                     [$_SESSION['user_id'], $plan['id']]
                 )->fetch();
                 if ($hadTrial) {
@@ -143,7 +143,7 @@ class Controller
 
         // Paid plan — check existing
         $existing = $db->query(
-            "SELECT id FROM user_subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now')",
+            "SELECT id FROM plugin_subscription_subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now')",
             [$_SESSION['user_id']]
         )->fetch();
 
@@ -154,7 +154,7 @@ class Controller
 
         // Create pending subscription
         $db->query(
-            "INSERT INTO user_subscriptions (user_id, plan_id, status, payment_provider, amount, created_at) VALUES (?, ?, 'pending', 'yookassa', ?, datetime('now'))",
+            "INSERT INTO plugin_subscription_subscriptions (user_id, plan_id, status, payment_provider, amount, created_at) VALUES (?, ?, 'pending', 'yookassa', ?, datetime('now'))",
             [$_SESSION['user_id'], $plan['id'], $plan['price']]
         );
         $subscriptionId = $db->query("SELECT last_insert_rowid()")->fetchColumn();
@@ -186,7 +186,7 @@ class Controller
 
         if (is_array($result) && !empty($result['id'])) {
             $db->query(
-                "UPDATE user_subscriptions SET payment_id = ? WHERE id = ?",
+                "UPDATE plugin_subscription_subscriptions SET payment_id = ? WHERE id = ?",
                 [$result['id'], $subscriptionId]
             );
 
@@ -216,8 +216,8 @@ class Controller
 
         $db = self::getDb($fc);
         $subscription = $db->query(
-            "SELECT us.*, sp.duration_days FROM user_subscriptions us
-             JOIN subscription_plans sp ON us.plan_id = sp.id
+            "SELECT us.*, sp.duration_days FROM plugin_subscription_subscriptions us
+             JOIN plugin_subscription_plans sp ON us.plan_id = sp.id
              WHERE us.payment_id = ? AND us.user_id = ? AND us.status = 'pending'
              ORDER BY us.id DESC LIMIT 1",
             [$paymentId, $userId]
@@ -226,14 +226,14 @@ class Controller
         if ($subscription) {
             $expiresAt = date('Y-m-d H:i:s', strtotime("+{$subscription['duration_days']} days"));
             $db->query(
-                "UPDATE user_subscriptions SET status = 'active', started_at = datetime('now'), expires_at = ? WHERE id = ?",
+                "UPDATE plugin_subscription_subscriptions SET status = 'active', started_at = datetime('now'), expires_at = ? WHERE id = ?",
                 [$expiresAt, $subscription['id']]
             );
 
             // Reload subscription with updated data
             $activated = $db->query(
                 "SELECT us.*, sp.slug as plan_slug, sp.name as plan_name, sp.features as plan_features
-                 FROM user_subscriptions us JOIN subscription_plans sp ON us.plan_id = sp.id
+                 FROM plugin_subscription_subscriptions us JOIN plugin_subscription_plans sp ON us.plan_id = sp.id
                  WHERE us.id = ?",
                 [$subscription['id']]
             )->fetch();
@@ -254,7 +254,7 @@ class Controller
         if ($paymentId) {
             $db = self::getDb($fc);
             $db->query(
-                "UPDATE user_subscriptions SET status = 'canceled' WHERE payment_id = ? AND status = 'pending'",
+                "UPDATE plugin_subscription_subscriptions SET status = 'canceled' WHERE payment_id = ? AND status = 'pending'",
                 [$paymentId]
             );
         }
@@ -282,7 +282,7 @@ class Controller
 
         // Find pending subscription
         $subscription = $db->query(
-            "SELECT id, payment_id FROM user_subscriptions
+            "SELECT id, payment_id FROM plugin_subscription_subscriptions
              WHERE user_id = ? AND status = 'pending'
              ORDER BY id DESC LIMIT 1",
             [$_SESSION['user_id']]
@@ -323,7 +323,7 @@ class Controller
     {
         $expiresAt = date('Y-m-d H:i:s', strtotime("+{$plan['duration_days']} days"));
         $db->query(
-            "INSERT INTO user_subscriptions (user_id, plan_id, status, amount, started_at, expires_at, payment_id) VALUES (?, ?, 'active', ?, datetime('now'), ?, 'free_' || datetime('now'))",
+            "INSERT INTO plugin_subscription_subscriptions (user_id, plan_id, status, amount, started_at, expires_at, payment_id) VALUES (?, ?, 'active', ?, datetime('now'), ?, 'free_' || datetime('now'))",
             [$userId, $plan['id'], $plan['price'], $expiresAt]
         );
 
@@ -331,7 +331,7 @@ class Controller
         $subId = $db->query("SELECT last_insert_rowid()")->fetchColumn();
         $activated = $db->query(
             "SELECT us.*, sp.slug as plan_slug, sp.name as plan_name, sp.features as plan_features
-             FROM user_subscriptions us JOIN subscription_plans sp ON us.plan_id = sp.id
+             FROM plugin_subscription_subscriptions us JOIN plugin_subscription_plans sp ON us.plan_id = sp.id
              WHERE us.id = ?",
             [$subId]
         )->fetch();
@@ -372,7 +372,7 @@ class Controller
         try {
             $db = self::getDb($fc);
             $sub = $db->query(
-                "SELECT id FROM user_subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now') LIMIT 1",
+                "SELECT id FROM plugin_subscription_subscriptions WHERE user_id = ? AND status = 'active' AND expires_at > datetime('now') LIMIT 1",
                 [$_SESSION['user_id']]
             )->fetch();
             return !empty($sub);
@@ -388,8 +388,8 @@ class Controller
             $db = self::getDb($fc);
             return $db->query(
                 "SELECT us.*, sp.name as plan_name, sp.slug as plan_slug, sp.duration_days
-                 FROM user_subscriptions us
-                 JOIN subscription_plans sp ON us.plan_id = sp.id
+                 FROM plugin_subscription_subscriptions us
+                 JOIN plugin_subscription_plans sp ON us.plan_id = sp.id
                  WHERE us.user_id = ? AND us.status = 'active' AND us.expires_at > datetime('now')
                  ORDER BY us.expires_at DESC LIMIT 1",
                 [$_SESSION['user_id']]
@@ -404,7 +404,7 @@ class Controller
         try {
             $db = self::getDb($fc);
             return $db->query(
-                "SELECT * FROM subscription_plans WHERE is_active = 1 ORDER BY sort_order"
+                "SELECT * FROM plugin_subscription_plans WHERE is_active = 1 ORDER BY sort_order"
             )->fetchAll();
         } catch (\Exception $e) {
             return [];

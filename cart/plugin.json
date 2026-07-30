@@ -21,6 +21,6 @@
         }
     ],
     "tables": [
-        "cart_items"
+        "plugin_cart_items"
     ]
 }

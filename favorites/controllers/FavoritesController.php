@@ -22,23 +22,23 @@ class Controller
 
         $db = self::getDb();
         $existing = $db->query(
-            "SELECT id FROM user_favorites WHERE user_id = ? AND entity_type = ? AND entity_slug = ?",
+            "SELECT id FROM plugin_favorites_user_favorites WHERE user_id = ? AND entity_type = ? AND entity_slug = ?",
             [$userId, $entityType, $entitySlug]
         )->fetch();
 
         if ($existing) {
-            $db->query("DELETE FROM user_favorites WHERE id = ?", [$existing['id']]);
+            $db->query("DELETE FROM plugin_favorites_user_favorites WHERE id = ?", [$existing['id']]);
             echo json_encode(['ok' => true, 'favorited' => false]);
         } else {
             $limit = (int) self::getSetting('max_favorites', 50);
-            $count = $db->query("SELECT COUNT(*) as cnt FROM user_favorites WHERE user_id = ?", [$userId])->fetch();
+            $count = $db->query("SELECT COUNT(*) as cnt FROM plugin_favorites_user_favorites WHERE user_id = ?", [$userId])->fetch();
             if ($count['cnt'] >= $limit) {
                 http_response_code(400);
                 echo json_encode(['error' => "Max {$limit} favorites reached"]);
                 return;
             }
             $db->query(
-                "INSERT INTO user_favorites (user_id, entity_type, entity_slug) VALUES (?, ?, ?)",
+                "INSERT INTO plugin_favorites_user_favorites (user_id, entity_type, entity_slug) VALUES (?, ?, ?)",
                 [$userId, $entityType, $entitySlug]
             );
             echo json_encode(['ok' => true, 'favorited' => true]);
@@ -49,7 +49,7 @@ class Controller
     {
         $db = self::getDb();
         $rows = $db->query(
-            "SELECT entity_type, entity_slug, created_at FROM user_favorites WHERE user_id = ? ORDER BY created_at DESC",
+            "SELECT entity_type, entity_slug, created_at FROM plugin_favorites_user_favorites WHERE user_id = ? ORDER BY created_at DESC",
             [$userId]
         )->fetchAll() ?: [];
         echo json_encode($rows);
@@ -59,7 +59,7 @@ class Controller
     {
         $db = self::getDb();
         return $db->query(
-            "SELECT entity_type, entity_slug, created_at FROM user_favorites WHERE user_id = ? ORDER BY created_at DESC",
+            "SELECT entity_type, entity_slug, created_at FROM plugin_favorites_user_favorites WHERE user_id = ? ORDER BY created_at DESC",
             [$userId]
         )->fetchAll() ?: [];
     }
@@ -68,7 +68,7 @@ class Controller
     {
         $db = self::getDb();
         $row = $db->query(
-            "SELECT 1 FROM user_favorites WHERE user_id = ? AND entity_type = ? AND entity_slug = ? LIMIT 1",
+            "SELECT 1 FROM plugin_favorites_user_favorites WHERE user_id = ? AND entity_type = ? AND entity_slug = ? LIMIT 1",
             [$userId, $entityType, $entitySlug]
         )->fetch();
         return !empty($row);
@@ -77,7 +77,7 @@ class Controller
     public static function getCount(int $userId): int
     {
         $db = self::getDb();
-        $row = $db->query("SELECT COUNT(*) as cnt FROM user_favorites WHERE user_id = ?", [$userId])->fetch();
+        $row = $db->query("SELECT COUNT(*) as cnt FROM plugin_favorites_user_favorites WHERE user_id = ?", [$userId])->fetch();
         return (int) ($row['cnt'] ?? 0);
     }
 

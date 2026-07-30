@@ -33,6 +33,43 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
             try { $db->exec($stmt); }
             catch (\Exception $e) { error_log("Credits migration error: " . $e->getMessage()); }
         }
+
+
+    // Schema verification: ensure all expected columns exist
+    \$expectedColumns = [
+        'plugin_credits_user_balances' => [
+            'user_id' => 'INTEGER',
+            'balance' => 'INTEGER',
+            'updated_at' => 'DATETIME'
+        ],
+        'plugin_credits_transactions' => [
+            'id' => 'INTEGER',
+            'user_id' => 'INTEGER',
+            'amount' => 'INTEGER',
+            'type' => 'TEXT',
+            'description' => 'TEXT',
+            'reference' => 'TEXT',
+            'balance_after' => 'INTEGER',
+            'created_at' => 'DATETIME'
+        ]
+    ];
+
+    foreach (\$expectedColumns as \$table => \$columns) {
+        try {
+            \$existing = \$db->query("PRAGMA table_info(\"{\$table}\")")->fetchAll();
+            \$existingNames = array_column(\$existing, 'name');
+            foreach (\$columns as \$colName => \$colType) {
+                if (!in_array(\$colName, \$existingNames)) {
+                    \$db->exec("ALTER TABLE \"{\$table}\" ADD COLUMN \"{\$colName}\" {\$colType} DEFAULT ''");
+                    error_log("Credits plugin: added missing column {\$table}.{\$colName}");
+                }
+            }
+        } catch (\Exception \$e) {
+            error_log("Credits plugin schema verification error for {\$table}: " . \$e->getMessage());
+        }
+    }
+
+        }
     }
 }, 10, 'credits');
 
@@ -271,13 +308,13 @@ $pm->addAction('subscription.activated', function ($subscription, $fc) {
 $pm->addFilter('admin.menu', function ($menuItems) {
     $menuItems[] = [
         'title' => '💰 Балансы',
-        'url' => '/admin/table/user_balances',
+        'url' => '/admin/table/plugin_credits_user_balances',
         'section' => 'credits',
         'order' => 91
     ];
     $menuItems[] = [
         'title' => '📒 Транзакции',
-        'url' => '/admin/table/credit_transactions',
+        'url' => '/admin/table/plugin_credits_transactions',
         'section' => 'credits',
         'order' => 92
     ];

@@ -20,6 +20,35 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
             try { $db->exec($stmt); }
             catch (\Exception $e) { error_log("favorites migration error: " . $e->getMessage()); }
         }
+
+
+    // Schema verification: ensure all expected columns exist
+    \$expectedColumns = [
+        'plugin_favorites_user_favorites' => [
+            'id' => 'INTEGER',
+            'user_id' => 'INTEGER',
+            'entity_type' => 'TEXT',
+            'entity_slug' => 'TEXT',
+            'created_at' => 'DATETIME'
+        ]
+    ];
+
+    foreach (\$expectedColumns as \$table => \$columns) {
+        try {
+            \$existing = \$db->query("PRAGMA table_info(\"{\$table}\")")->fetchAll();
+            \$existingNames = array_column(\$existing, 'name');
+            foreach (\$columns as \$colName => \$colType) {
+                if (!in_array(\$colName, \$existingNames)) {
+                    \$db->exec("ALTER TABLE \"{\$table}\" ADD COLUMN \"{\$colName}\" {\$colType} DEFAULT ''");
+                    error_log("Favorites plugin: added missing column {\$table}.{\$colName}");
+                }
+            }
+        } catch (\Exception \$e) {
+            error_log("Favorites plugin schema verification error for {\$table}: " . \$e->getMessage());
+        }
+    }
+
+        }
     }
 }, 10, 'favorites');
 
@@ -68,8 +97,8 @@ fetch('/api/favorites/toggle',{method:'POST',headers:{'Content-Type':'applicatio
 JS;
     }, ['is_safe' => ['html']]));
 
-    // user_favorites() -> raw array [{entity_type, entity_slug, created_at}]
-    $twig->addFunction(new TwigFunction('user_favorites', function () {
+    // plugin_favorites_user_favorites() -> raw array [{entity_type, entity_slug, created_at}]
+    $twig->addFunction(new TwigFunction('plugin_favorites_user_favorites', function () {
         if (empty($_SESSION['user_id'])) return [];
         return \Plugins\Favorites\Controller::getUserFavorites((int)$_SESSION['user_id']);
     }));

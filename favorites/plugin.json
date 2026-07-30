@@ -3,9 +3,18 @@
     "version": "1.0.0",
     "description": "Universal favorites/bookmarks for any entity type. Heart toggle, profile panel.",
     "enabled": true,
-    "dependencies": ["account"],
-    "settings": [
-        {"key": "max_favorites", "type": "number", "value": 50, "label": "Max favorites per user"}
+    "dependencies": [
+        "account"
     ],
-    "tables": ["user_favorites"]
+    "settings": [
+        {
+            "key": "max_favorites",
+            "type": "number",
+            "value": 50,
+            "label": "Max favorites per user"
+        }
+    ],
+    "tables": [
+        "plugin_favorites_user_favorites"
+    ]
 }

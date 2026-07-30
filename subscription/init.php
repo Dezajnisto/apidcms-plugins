@@ -23,11 +23,11 @@ $pluginDir = __DIR__;
 
 $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
     try {
-        $cols = $db->query("PRAGMA table_info(subscription_plans)")->fetchAll(\PDO::FETCH_COLUMN, 1);
+        $cols = $db->query("PRAGMA table_info(plugin_subscription_plans)")->fetchAll(\PDO::FETCH_COLUMN, 1);
         if (is_array($cols) && in_array('duration_months', $cols) && !in_array('duration_days', $cols)) {
-            $db->exec("ALTER TABLE subscription_plans ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 30");
-            $db->exec("UPDATE subscription_plans SET duration_days = ROUND(duration_months * 30)");
-            $db->exec("ALTER TABLE subscription_plans DROP COLUMN duration_months");
+            $db->exec("ALTER TABLE plugin_subscription_plans ADD COLUMN duration_days INTEGER NOT NULL DEFAULT 30");
+            $db->exec("UPDATE plugin_subscription_plans SET duration_days = ROUND(duration_months * 30)");
+            $db->exec("ALTER TABLE plugin_subscription_plans DROP COLUMN duration_months");
         }
     } catch (\Exception $e) {
         error_log("Subscription migration v1.2.2 error: " . $e->getMessage());
@@ -35,9 +35,9 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
 
     // Migration v1.3.1: add trial_once column
     try {
-        $cols = $db->query("PRAGMA table_info(subscription_plans)")->fetchAll(\PDO::FETCH_COLUMN, 1);
+        $cols = $db->query("PRAGMA table_info(plugin_subscription_plans)")->fetchAll(\PDO::FETCH_COLUMN, 1);
         if (is_array($cols) && !in_array('trial_once', $cols)) {
-            $db->exec("ALTER TABLE subscription_plans ADD COLUMN trial_once INTEGER DEFAULT 0");
+            $db->exec("ALTER TABLE plugin_subscription_plans ADD COLUMN trial_once INTEGER DEFAULT 0");
         }
     } catch (\Exception $e) {
         error_log("Subscription migration v1.3.1 error: " . $e->getMessage());
@@ -51,6 +51,50 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
         if (!empty($stmt)) {
             try { $db->exec($stmt); }
             catch (\Exception $e) { error_log("Subscription migration error: " . $e->getMessage()); }
+        }
+    }
+
+    // Schema verification: ensure all expected columns exist
+    $expectedColumns = [
+        'plugin_subscription_plans' => [
+            'id' => 'INTEGER',
+            'name' => 'TEXT',
+            'slug' => 'TEXT',
+            'price' => 'NUMERIC',
+            'duration_days' => 'INTEGER',
+            'description' => 'TEXT',
+            'features' => 'TEXT',
+            'is_active' => 'INTEGER',
+            'sort_order' => 'INTEGER',
+            'created_at' => 'DATETIME',
+            'trial_once' => 'INTEGER'
+        ],
+        'plugin_subscription_subscriptions' => [
+            'id' => 'INTEGER',
+            'user_id' => 'INTEGER',
+            'plan_id' => 'INTEGER',
+            'status' => 'TEXT',
+            'payment_id' => 'TEXT',
+            'payment_provider' => 'TEXT',
+            'amount' => 'NUMERIC',
+            'started_at' => 'DATETIME',
+            'expires_at' => 'DATETIME',
+            'created_at' => 'DATETIME'
+        ]
+    ];
+
+    foreach ($expectedColumns as $table => $columns) {
+        try {
+            $existing = $db->query("PRAGMA table_info(\"{$table}\")")->fetchAll();
+            $existingNames = array_column($existing, 'name');
+            foreach ($columns as $colName => $colType) {
+                if (!in_array($colName, $existingNames)) {
+                    $db->exec("ALTER TABLE \"{$table}\" ADD COLUMN \"{$colName}\" {$colType} DEFAULT ''");
+                    error_log("Subscription plugin: added missing column {$table}.{$colName}");
+                }
+            }
+        } catch (\Exception $e) {
+            error_log("Subscription plugin schema verification error for {$table}: " . $e->getMessage());
         }
     }
 }, 10, 'subscription');
@@ -126,7 +170,7 @@ $pm->addAction('payments.return', function ($fc) {
 $pm->addFilter('admin.menu', function ($menuItems) {
     $menuItems[] = [
         'title' => '📋 Подписки',
-        'url' => '/admin/table/user_subscriptions',
+        'url' => '/admin/table/plugin_subscription_subscriptions',
         'section' => 'subscriptions',
         'order' => 90
     ];

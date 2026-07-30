@@ -74,7 +74,7 @@ class Controller
         $db = self::getDb($fc);
         $sessionId = $_SESSION['cart_session_id'];
         $db->query(
-            "DELETE FROM cart_items WHERE session_id = ? AND product_table = ? AND product_id = ?",
+            "DELETE FROM plugin_cart_items WHERE session_id = ? AND product_table = ? AND product_id = ?",
             [$sessionId, $productTable, $productId]
         );
 
@@ -121,7 +121,7 @@ class Controller
 
         self::renderPlugin($fc, '@cart/cart.html.twig', [
             'title' => 'Корзина',
-            'cart_items' => $cartItems,
+            'plugin_cart_items' => $cartItems,
             'total' => $total,
             'count' => count($cartItems)
         ]);
@@ -136,11 +136,11 @@ class Controller
             $db = self::getDb($fc);
 
             // Удаляем старые записи
-            $db->query("DELETE FROM cart_items WHERE session_id = ?", [$sessionId]);
+            $db->query("DELETE FROM plugin_cart_items WHERE session_id = ?", [$sessionId]);
 
             // Вставляем текущие
             foreach ($_SESSION['cart'] ?? [] as $item) {
-                $db->insert('cart_items', [
+                $db->insert('plugin_cart_items', [
                     'user_id' => !empty($_SESSION['user_id']) ? $_SESSION['user_id'] : null,
                     'session_id' => $sessionId,
                     'product_table' => $item['product_table'],

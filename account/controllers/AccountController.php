@@ -146,30 +146,40 @@ class Controller
         $error = null;
         $success = null;
 
-        // Read redirect params from subscription/payment flows
+        // Read redirect params from subscription/payment flows (one-time flash)
         $redirectError = $_GET['error'] ?? null;
         $redirectSuccess = $_GET['success'] ?? null;
         $redirectSubscribed = $_GET['subscribed'] ?? null;
         $redirectPending = $_GET['pending'] ?? null;
 
-        if ($redirectError) {
-            $errorMap = [
-                'payment_failed' => 'Не удалось создать платёж. Попробуйте позже или обратитесь в поддержку.',
-                'payment_canceled' => 'Платёж отменён.',
-                'no_payment_gateway' => 'Платёжный шлюз не настроен.',
-                'trial_used' => 'Вы уже использовали пробный период.',
-            ];
-            $error = $errorMap[$redirectError] ?? $redirectError;
+        if ($redirectError || $redirectSuccess || $redirectSubscribed || $redirectPending) {
+            // Store as session flash, then redirect to clean URL
+            if ($redirectError) {
+                $errorMap = [
+                    'payment_failed' => 'Не удалось создать платёж. Попробуйте позже или обратитесь в поддержку.',
+                    'payment_canceled' => 'Платёж отменён.',
+                    'no_payment_gateway' => 'Платёжный шлюз не настроен.',
+                    'trial_used' => 'Вы уже использовали пробный период.',
+                ];
+                $_SESSION['profile_flash_error'] = $errorMap[$redirectError] ?? $redirectError;
+            }
+            if ($redirectSuccess) {
+                $_SESSION['profile_flash_success'] = $redirectSuccess;
+            }
+            if ($redirectSubscribed) {
+                $_SESSION['profile_flash_success'] = 'Подписка успешно оформлена!';
+            }
+            if ($redirectPending) {
+                $_SESSION['profile_flash_success'] = 'Платёж ожидает подтверждения. Подписка активируется автоматически.';
+            }
+            header('Location: /profile');
+            exit;
         }
-        if ($redirectSuccess) {
-            $success = $redirectSuccess;
-        }
-        if ($redirectSubscribed) {
-            $success = 'Подписка успешно оформлена!';
-        }
-        if ($redirectPending) {
-            $success = 'Платёж ожидает подтверждения. Подписка активируется автоматически.';
-        }
+
+        // Read one-time flash from session
+        $error = $_SESSION['profile_flash_error'] ?? null;
+        $success = $_SESSION['profile_flash_success'] ?? null;
+        unset($_SESSION['profile_flash_error'], $_SESSION['profile_flash_success']);
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $name = trim($_POST['name'] ?? '');

@@ -1,5 +1,13 @@
 # Subscription Plugin — Changelog
 
+## [1.4.1] — 2026-07-30
+
+### Changed
+
+- **Tables renamed** with plugin_subscription_ prefix: subscription_plans → plugin_subscription_plans, user_subscriptions → plugin_subscription_subscriptions
+- Prevents conflicts with user-created tables
+- **Schema verification** via PRAGMA table_info + ALTER TABLE ADD COLUMN
+- **FK references** updated: REFERENCES users(id) → REFERENCES plugin_account_users(id)
 ## 1.4.0 — 2026-07-23
 
 ### Changed (BREAKING)

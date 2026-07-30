@@ -1,5 +1,13 @@
 # Credits Plugin — Changelog
 
+## [1.1.0] — 2026-07-30
+
+### Changed
+
+- **Tables renamed** with `plugin_credits_` prefix: `user_balances` → `plugin_credits_user_balances`, `credit_transactions` → `plugin_credits_transactions`
+- Prevents conflicts with user-created tables
+- **Schema verification** via `PRAGMA table_info` + `ALTER TABLE ADD COLUMN`
+- **FK references** updated: `REFERENCES users(id)` → `REFERENCES plugin_account_users(id)`
 ## 1.0.0 — 2026-07-23
 
 ### Initial release

@@ -31,7 +31,7 @@ Adds registration, login and user profile to your site.
 
 ## Tables
 
-- `users` — user accounts
+- `plugin_account_users` — user accounts
 - `user_tokens` — tokens (remember-me, password-reset)
 
 ## Requirements

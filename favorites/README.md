@@ -18,12 +18,12 @@
 
 1. Установи и активируй плагин `account`
 2. Скопируй папку `favorites/` в `plugins/` твоего проекта
-3. Таблица `user_favorites` создастся автоматически при загрузке плагина
+3. Таблица `plugin_favorites_user_favorites` создастся автоматически при загрузке плагина
 
 ## Модель данных
 
 ```sql
-user_favorites (
+plugin_favorites_user_favorites (
     id INTEGER PRIMARY KEY,
     user_id INTEGER NOT NULL,
     entity_type TEXT NOT NULL,    -- 'catalog', 'blog', 'page', 'product'...

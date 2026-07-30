@@ -4,7 +4,7 @@
   "plugins": [
     {
       "name": "account",
-      "version": "1.1.0",
+      "version": "1.1.1",
       "title": {
         "ru": "Account — Личный кабинет",
         "en": "Account — User Profile"
@@ -56,7 +56,7 @@
     },
     {
       "name": "subscription",
-      "version": "1.4.0",
+      "version": "1.4.1",
       "title": {
         "ru": "Subscription (Подписки)",
         "en": "Subscription (Memberships)"
@@ -83,7 +83,7 @@
     },
     {
       "name": "credits",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "title": {
         "ru": "Credits (Кредиты)",
         "en": "Credits (Balance)"
@@ -111,7 +111,7 @@
     },
     {
       "name": "favorites",
-      "version": "1.0.0",
+      "version": "1.0.1",
       "title": {
         "ru": "Favorites (Избранное)",
         "en": "Favorites (Bookmarks)"

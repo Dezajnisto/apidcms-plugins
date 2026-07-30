@@ -34,7 +34,7 @@ class Controller
             } else {
                 $db = self::getDb($fc);
                 $user = $db->query(
-                    "SELECT * FROM users WHERE email = ? AND status = 'active'",
+                    "SELECT * FROM plugin_account_users WHERE email = ? AND status = 'active'",
                     [$email]
                 )->fetch();
 
@@ -91,7 +91,7 @@ class Controller
                 
                 // Проверяем, нет ли уже такого email
                 $exists = $db->query(
-                    "SELECT id FROM users WHERE email = ?",
+                    "SELECT id FROM plugin_account_users WHERE email = ?",
                     [$formData['email']]
                 )->fetch();
 
@@ -99,7 +99,7 @@ class Controller
                     $error = 'Пользователь с таким email уже существует';
                 } else {
                     $hash = password_hash($password, PASSWORD_BCRYPT);
-                    $userId = $db->insert('users', [
+                    $userId = $db->insert('plugin_account_users', [
                         'email' => $formData['email'],
                         'password_hash' => $hash,
                         'name' => $formData['name'],
@@ -108,7 +108,7 @@ class Controller
                     ]);
 
                     // Авторизуем сразу
-                    $user = $db->query("SELECT * FROM users WHERE id = ?", [$userId])->fetch();
+                    $user = $db->query("SELECT * FROM plugin_account_users WHERE id = ?", [$userId])->fetch();
                     self::startUserSession($user, false, $db);
 
                     header('Location: /profile');
@@ -135,7 +135,7 @@ class Controller
         }
 
         $db = self::getDb($fc);
-        $user = $db->query("SELECT * FROM users WHERE id = ?", [$_SESSION['user_id']])->fetch();
+        $user = $db->query("SELECT * FROM plugin_account_users WHERE id = ?", [$_SESSION['user_id']])->fetch();
 
         if (!$user) {
             // Пользователь удалён — разлогиниваем
@@ -150,7 +150,7 @@ class Controller
             $name = trim($_POST['name'] ?? '');
             $phone = trim($_POST['phone'] ?? '');
 
-            $db->update('users', [
+            $db->update('plugin_account_users', [
                 'name' => $name,
                 'phone' => $phone
             ], 'id = ?', [$_SESSION['user_id']]);
@@ -177,7 +177,7 @@ class Controller
         // Удаляем remember-me токен
         if (!empty($_COOKIE['remember_token'])) {
             $db = self::getDb($fc);
-            $db->query("DELETE FROM user_tokens WHERE token = ?", [$_COOKIE['remember_token']]);
+            $db->query("DELETE FROM plugin_account_tokens WHERE token = ?", [$_COOKIE['remember_token']]);
             setcookie('remember_token', '', time() - 3600, '/');
         }
 
@@ -195,7 +195,7 @@ class Controller
     {
         $db = self::getDb($fc);
         $tokenRow = $db->query(
-            "SELECT * FROM user_tokens WHERE token = ? AND type = 'remember' AND expires_at > datetime('now')",
+            "SELECT * FROM plugin_account_tokens WHERE token = ? AND type = 'remember' AND expires_at > datetime('now')",
             [$token]
         )->fetch();
 
@@ -204,7 +204,7 @@ class Controller
             return;
         }
 
-        $user = $db->query("SELECT * FROM users WHERE id = ? AND status = 'active'", [$tokenRow['user_id']])->fetch();
+        $user = $db->query("SELECT * FROM plugin_account_users WHERE id = ? AND status = 'active'", [$tokenRow['user_id']])->fetch();
         if (!$user) {
             setcookie('remember_token', '', time() - 3600, '/');
             return;
@@ -265,7 +265,7 @@ class Controller
 
         if ($remember) {
             $token = bin2hex(random_bytes(32));
-            $db->insert('user_tokens', [
+            $db->insert('plugin_account_tokens', [
                 'user_id' => $user['id'],
                 'token' => $token,
                 'type' => 'remember',
@@ -303,8 +303,8 @@ class Controller
 
                 // Check rate limit: existing valid token for this email
                 $existing = $db->query(
-                    "SELECT t.id FROM user_tokens t
-                     JOIN users u ON t.user_id = u.id
+                    "SELECT t.id FROM plugin_account_tokens t
+                     JOIN plugin_account_users u ON t.user_id = u.id
                      WHERE u.email = ? AND t.type = 'password_reset'
                      AND t.expires_at > datetime('now')",
                     [$email]
@@ -316,7 +316,7 @@ class Controller
                 }
 
                 $user = $db->query(
-                    "SELECT * FROM users WHERE email = ? AND status = 'active'",
+                    "SELECT * FROM plugin_account_users WHERE email = ? AND status = 'active'",
                     [$email]
                 )->fetch();
 
@@ -325,7 +325,7 @@ class Controller
                     $token = bin2hex(random_bytes(32));
                     $expiresAt = date('Y-m-d H:i:s', time() + $ttl);
 
-                    $db->insert('user_tokens', [
+                    $db->insert('plugin_account_tokens', [
                         'user_id' => $user['id'],
                         'token' => $token,
                         'type' => 'password_reset',
@@ -377,7 +377,7 @@ class Controller
         $db = self::getDb($fc);
 
         $tokenRow = $db->query(
-            "SELECT * FROM user_tokens WHERE token = ? AND type = 'password_reset' AND expires_at > datetime('now')",
+            "SELECT * FROM plugin_account_tokens WHERE token = ? AND type = 'password_reset' AND expires_at > datetime('now')",
             [$token]
         )->fetch();
 
@@ -392,7 +392,7 @@ class Controller
         }
 
         $user = $db->query(
-            "SELECT * FROM users WHERE id = ? AND status = 'active'",
+            "SELECT * FROM plugin_account_users WHERE id = ? AND status = 'active'",
             [$tokenRow['user_id']]
         )->fetch();
 
@@ -402,7 +402,7 @@ class Controller
         }
 
         // Delete the used token
-        $db->query("DELETE FROM user_tokens WHERE id = ?", [$tokenRow['id']]);
+        $db->query("DELETE FROM plugin_account_tokens WHERE id = ?", [$tokenRow['id']]);
 
         // Log user in
         self::startUserSession($user, false, $db);
@@ -439,7 +439,7 @@ class Controller
                 $error = 'Новые пароли не совпадают';
             } else {
                 $user = $db->query(
-                    "SELECT * FROM users WHERE id = ?",
+                    "SELECT * FROM plugin_account_users WHERE id = ?",
                     [$_SESSION['user_id']]
                 )->fetch();
 
@@ -447,7 +447,7 @@ class Controller
                     $error = 'Неверный текущий пароль';
                 } else {
                     $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
-                    $db->update('users', ['password_hash' => $newHash], 'id = ?', [$_SESSION['user_id']]);
+                    $db->update('plugin_account_users', ['password_hash' => $newHash], 'id = ?', [$_SESSION['user_id']]);
                     $success = 'Пароль успешно изменён';
                 }
             }

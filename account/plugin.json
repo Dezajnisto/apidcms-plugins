@@ -43,7 +43,7 @@
     ],
     "path": "/home/c91469/apidcms.dezajno.ru/www/plugins/account",
     "tables": [
-        "users",
-        "user_tokens"
+        "plugin_account_users",
+        "plugin_account_tokens"
     ]
 }

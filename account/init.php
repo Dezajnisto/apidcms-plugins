@@ -30,6 +30,45 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
             }
         }
     }
+
+    // Schema verification: ensure all expected columns exist
+    $expectedColumns = [
+        'plugin_account_users' => [
+            'id' => 'INTEGER',
+            'email' => 'TEXT',
+            'password_hash' => 'TEXT',
+            'name' => 'TEXT',
+            'phone' => 'TEXT',
+            'avatar' => 'TEXT',
+            'status' => 'TEXT',
+            'created_at' => 'DATETIME'
+        ],
+        'plugin_account_tokens' => [
+            'id' => 'INTEGER',
+            'user_id' => 'INTEGER',
+            'token' => 'TEXT',
+            'type' => 'TEXT',
+            'expires_at' => 'DATETIME',
+            'created_at' => 'DATETIME'
+        ]
+    ];
+
+    foreach ($expectedColumns as $table => $columns) {
+        try {
+            $existing = $db->query("PRAGMA table_info(\"{$table}\")")->fetchAll();
+            $existingNames = array_column($existing, 'name');
+
+            foreach ($columns as $colName => $colType) {
+                if (!in_array($colName, $existingNames)) {
+                    // Use safe default: TEXT for everything added post-hoc
+                    $db->exec("ALTER TABLE \"{$table}\" ADD COLUMN \"{$colName}\" {$colType} DEFAULT ''");
+                    error_log("Account plugin: added missing column {$table}.{$colName}");
+                }
+            }
+        } catch (\Exception $e) {
+            error_log("Account plugin schema verification error for {$table}: " . $e->getMessage());
+        }
+    }
 }, 10, 'account');
 
 // === Twig: добавляем путь к шаблонам и функции ===

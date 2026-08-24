@@ -28,8 +28,3 @@ CREATE TABLE IF NOT EXISTS plugin_subscription_subscriptions (
 
 CREATE INDEX IF NOT EXISTS idx_plugin_subscription_subscriptions_user ON plugin_subscription_subscriptions(user_id);
 CREATE INDEX IF NOT EXISTS idx_plugin_subscription_subscriptions_status ON plugin_subscription_subscriptions(status);
-
--- Insert default plans
-INSERT OR IGNORE INTO plugin_subscription_plans (name, slug, price, duration_days, description, features, sort_order) VALUES
-('Bajto Light', 'light', 990, 180, 'Базовый доступ ко всем промтам', '["Доступ ко всем промтам","Копирование одним кликом","Новые промты каждую неделю","Email-поддержка"]', 10),
-('Bajto Pro', 'pro', 1490, 365, 'Полный доступ + эксклюзивы', '["Всё из Light","Эксклюзивные промты","Приоритетная поддержка","Доступ к бета-промтам","История копирований"]', 20);

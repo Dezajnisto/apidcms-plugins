@@ -160,7 +160,9 @@ class Service
     public static function getBaseUrl(): string
     {
         $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? 'bajto.ru';
+        // HTTP_HOST есть у любого веб-запроса; пустая строка как fallback —
+        // чтобы в публичном коде не оказалось имени чужого сайта.
+        $host = $_SERVER['HTTP_HOST'] ?? '';
         return $scheme . '://' . $host;
     }
 

@@ -1,0 +1,21 @@
+{% extends "base.html.twig" %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-12 px-4 text-center">
+    <h1 class="text-2xl font-bold mb-4">{{ title }}</h1>
+
+    <div class="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md mb-6">
+        Письмо со ссылкой для подтверждения отправлено на <b>{{ email }}</b>.
+    </div>
+
+    <p class="text-gray-500 mb-4">
+        Перейдите по ссылке из письма — аккаунт активируется, и вы сразу попадёте в личный кабинет.
+    </p>
+
+    <p class="text-sm text-gray-400">
+        Письмо идёт до минуты, иногда попадает в «Спам». Ссылка действует 24 часа.
+        Не пришло? <a href="/register" class="text-blue-600 hover:underline">Зарегистрируйтесь заново</a>
+        или <a href="/login" class="text-blue-600 hover:underline">вернитесь ко входу</a>.
+    </p>
+</div>
+{% endblock %}

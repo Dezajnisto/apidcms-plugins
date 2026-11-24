@@ -1,0 +1,21 @@
+{% extends "base.html.twig" %}
+
+{% block content %}
+<div class="max-w-md mx-auto mt-12 px-4 text-center">
+    <h1 class="text-2xl font-bold mb-4">{{ title }}</h1>
+
+    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-6">
+        Ссылка подтверждения уже использована или истекла — она живёт 24 часа.
+    </div>
+
+    <p class="text-gray-500 mb-6">
+        Если вы уже подтвердили почту, просто войдите. Если нет — зарегистрируйтесь заново
+        тем же адресом или запросите новое письмо.
+    </p>
+
+    <p class="space-x-4">
+        <a href="/login" class="text-blue-600 hover:underline">Войти</a>
+        <a href="/register" class="text-blue-600 hover:underline">Регистрация</a>
+    </p>
+</div>
+{% endblock %}

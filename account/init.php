@@ -140,6 +140,9 @@ $pm->addAction('front.router.before', function ($path, $frontController) use ($p
         case 'account/forgot':
             \Plugins\Account\Controller::forgot($frontController);
             exit;
+        case 'account/confirm':
+            \Plugins\Account\Controller::confirm($frontController);
+            exit;
         case 'account/reset':
             \Plugins\Account\Controller::reset($frontController);
             exit;

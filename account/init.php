@@ -157,7 +157,9 @@ $pm->addAction('front.router.before', function ($path, $frontController) use ($p
 $pm->addFilter('admin.menu', function ($menuItems) {
     $menuItems[] = [
         'title' => '👤 Пользователи',
-        'url' => '/admin/table/users',
+        // Таблица плагина, а не users: у account она называется
+        // plugin_account_users, и пункт меню вёл на несуществующую таблицу.
+        'url' => '/admin/table/plugin_account_users',
         'section' => 'users',
         'order' => 80
     ];

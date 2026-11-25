@@ -1,0 +1,104 @@
+{
+  "name": "webchat",
+  "version": "1.0.0",
+  "description": "Веб-чат поддержки: виджет на сайте, ответы из MAX или Telegram",
+  "enabled": false,
+  "dependencies": [],
+  "settings": [
+    {
+      "key": "channel",
+      "type": "select",
+      "value": "max",
+      "options": {
+        "max": "MAX (max.ru)",
+        "telegram": "Telegram"
+      },
+      "label": "Канал для ответов",
+      "description": "Куда бот присылает обращения. Второй канал можно включить позже — настройки у них независимые."
+    },
+    {
+      "key": "online",
+      "type": "checkbox",
+      "value": true,
+      "label": "Принимаю обращения",
+      "description": "Снимите галочку, когда уходите: посетитель увидит текст «не в сети», но сообщение всё равно можно оставить"
+    },
+    {
+      "key": "title",
+      "type": "text",
+      "value": "Поддержка",
+      "label": "Заголовок окна чата"
+    },
+    {
+      "key": "greeting",
+      "type": "textarea",
+      "value": "Здравствуйте! Напишите ваш вопрос — ответим здесь же.",
+      "label": "Приветствие",
+      "description": "Первое сообщение в окне чата"
+    },
+    {
+      "key": "offline_text",
+      "type": "text",
+      "value": "Сейчас не в сети. Оставьте сообщение — ответим, как только сможем.",
+      "label": "Текст, когда не в сети"
+    },
+    {
+      "key": "color",
+      "type": "text",
+      "value": "#2563eb",
+      "label": "Цвет кнопки и акцентов",
+      "description": "HEX, например #2563eb"
+    },
+    {
+      "key": "position",
+      "type": "select",
+      "value": "right",
+      "options": {
+        "right": "Справа внизу",
+        "left": "Слева внизу"
+      },
+      "label": "Положение кнопки"
+    },
+    {
+      "key": "max_token",
+      "type": "text",
+      "secret": true,
+      "value": "",
+      "label": "MAX: токен бота",
+      "description": "business.max.ru → Чат-боты → ⋮ → Настройки → токен"
+    },
+    {
+      "key": "max_chat_id",
+      "type": "text",
+      "value": "",
+      "label": "MAX: чат для обращений",
+      "description": "Групповой чат с ботом (ID вида -100…) или ваш user_id, если пишете боту в личку. Напишите боту любое слово — плагин запомнит адрес сам."
+    },
+    {
+      "key": "tg_token",
+      "type": "text",
+      "secret": true,
+      "value": "",
+      "label": "Telegram: токен бота",
+      "description": "@BotFather → /newbot"
+    },
+    {
+      "key": "tg_chat_id",
+      "type": "text",
+      "value": "",
+      "label": "Telegram: ID группы",
+      "description": "Группа с включёнными темами (форум). ID вида -1001234567890"
+    },
+    {
+      "key": "notify_email",
+      "type": "text",
+      "value": "",
+      "label": "Почта на случай, если канал не настроен",
+      "description": "Пусто — не отправлять писем"
+    }
+  ],
+  "tables": [
+    "plugin_webchat_threads",
+    "plugin_webchat_messages"
+  ]
+}

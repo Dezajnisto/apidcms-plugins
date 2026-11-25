@@ -162,6 +162,24 @@
       "min_cms_version": "1.0.0",
       "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/yookassa/README.md",
       "content_url_en": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/yookassa/README.en.md"
+    },
+    {
+      "name": "webchat",
+      "version": "1.0.0",
+      "title": "WebChat (чат с ответами из MAX или Telegram)",
+      "description": "Чат-виджет на сайте: посетитель пишет в окно, владелец отвечает из MAX или Telegram. История хранится в базе сайта.",
+      "icon": "💬",
+      "author": "@apidcms-team",
+      "category": "support",
+      "dependencies": [],
+      "tags": [
+        "chat",
+        "support",
+        "max",
+        "telegram",
+        "widget"
+      ],
+      "min_cms_version": "2.8.0"
     }
   ]
 }

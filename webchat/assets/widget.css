@@ -1,0 +1,196 @@
+/* Веб-чат apidcms — стили виджета.
+ * Всё внутри Shadow DOM: селекторы не пересекаются с темой сайта.
+ */
+
+:host {
+  --wc-color: #2563eb;
+  --wc-radius: 14px;
+  all: initial;
+}
+
+:host, :host * {
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Кнопка */
+.wc-bubble {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 56px;
+  height: 56px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--wc-color);
+  color: #fff;
+  cursor: pointer;
+  z-index: 2147483000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.wc-bubble:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(0, 0, 0, .22); }
+.wc-bubble svg { width: 26px; height: 26px; fill: currentColor; }
+
+:host(.wc-left) .wc-bubble { left: 20px; right: auto; }
+
+.wc-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 10px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 12px;
+  line-height: 20px;
+  text-align: center;
+  padding: 0 5px;
+}
+
+/* Панель */
+.wc-panel {
+  position: fixed;
+  right: 20px;
+  bottom: 88px;
+  width: 360px;
+  max-width: calc(100vw - 32px);
+  height: 480px;
+  max-height: calc(100vh - 120px);
+  background: #fff;
+  border-radius: var(--wc-radius);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .22);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 2147483000;
+  animation: wc-in .16s ease-out;
+}
+:host(.wc-left) .wc-panel { left: 20px; right: auto; }
+
+@keyframes wc-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.wc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--wc-color);
+  color: #fff;
+}
+.wc-title { font-size: 15px; font-weight: 600; }
+.wc-status { font-size: 12px; opacity: .85; }
+.wc-status.wc-online::before { content: "● "; }
+.wc-status.wc-offline::before { content: "○ "; }
+
+.wc-close {
+  border: 0;
+  background: transparent;
+  color: #fff;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: .8;
+}
+.wc-close:hover { opacity: 1; }
+
+.wc-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wc-msg { display: flex; }
+.wc-msg.wc-out { justify-content: flex-end; }
+.wc-msg.wc-in { justify-content: flex-start; }
+
+.wc-text {
+  max-width: 80%;
+  padding: 8px 11px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.wc-out .wc-text { background: var(--wc-color); color: #fff; border-bottom-right-radius: 4px; }
+.wc-in .wc-text { background: #fff; color: #111827; border: 1px solid #e5e7eb; border-bottom-left-radius: 4px; }
+
+.wc-notice {
+  align-self: center;
+  max-width: 90%;
+  text-align: center;
+  font-size: 12.5px;
+  color: #6b7280;
+  background: #eef2f7;
+  border-radius: 10px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+}
+
+.wc-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+
+.wc-input {
+  flex: 1;
+  resize: none;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 14px;
+  line-height: 1.4;
+  max-height: 120px;
+  outline: none;
+  color: #111827;
+  background: #fff;
+}
+.wc-input:focus { border-color: var(--wc-color); box-shadow: 0 0 0 3px rgba(37, 99, 235, .12); }
+
+.wc-send {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--wc-color);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.wc-send svg { width: 18px; height: 18px; fill: currentColor; }
+.wc-send:disabled { opacity: .5; cursor: default; }
+
+@media (max-width: 480px) {
+  .wc-panel {
+    right: 0;
+    left: 0;
+    bottom: 0;
+    width: 100vw;
+    max-width: 100vw;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+  .wc-bubble { right: 14px; bottom: 14px; }
+}

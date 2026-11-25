@@ -1,0 +1,94 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Чаты{% endblock %}
+{% block page_title %}Чаты{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+
+    {% if not channel_ready %}
+    <div class="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+        <p class="font-semibold mb-1">Канал не настроен</p>
+        <p>Виджет работает, обращения копятся здесь, но оператор не получает их в мессенджер.
+           Заполните токен бота и ID чата в
+           <a href="{{ admin_url('plugins/webchat?tab=settings') }}" class="underline">настройках плагина</a>
+           (канал: {{ channel == 'max' ? 'MAX' : 'Telegram' }}).</p>
+    </div>
+    {% endif %}
+
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div class="flex items-center gap-2">
+            {% for key, label in {'open': 'Открытые', 'closed': 'Закрытые', 'all': 'Все'} %}
+            <a href="{{ admin_url('chats') }}?status={{ key }}{% if search %}&q={{ search|url_encode }}{% endif %}"
+               class="px-3 py-1.5 rounded-md text-sm border {{ status == key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                {{ label }}
+            </a>
+            {% endfor %}
+            {% if unread > 0 %}
+            <span class="ml-2 text-xs text-gray-500">непрочитанных обращений: {{ unread }}</span>
+            {% endif %}
+        </div>
+
+        <div class="flex items-center gap-2">
+            <form method="get" action="{{ admin_url('chats') }}" class="flex items-center gap-2">
+                <input type="hidden" name="status" value="{{ status }}">
+                <input type="text" name="q" value="{{ search }}" placeholder="Имя, страница, номер"
+                       class="px-3 py-1.5 border border-gray-300 rounded-md text-sm w-56">
+                <button type="submit" class="px-3 py-1.5 bg-gray-800 text-white rounded-md text-sm">Найти</button>
+            </form>
+            <form method="post" action="{{ admin_url('chats/check') }}">
+                <button type="submit" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
+                    <i class="fas fa-plug mr-1"></i> Проверить подключение
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
+        {% if threads is empty %}
+        <div class="p-12 text-center text-gray-500">
+            <i class="fas fa-comments text-4xl mb-3 block text-gray-300"></i>
+            <p>Обращений пока нет</p>
+            <p class="text-sm mt-1">Как только посетитель напишет в виджет, диалог появится здесь.</p>
+        </div>
+        {% else %}
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50 text-gray-600">
+                <tr>
+                    <th class="px-4 py-3 text-left font-medium">#</th>
+                    <th class="px-4 py-3 text-left font-medium">Посетитель</th>
+                    <th class="px-4 py-3 text-left font-medium">Последнее сообщение</th>
+                    <th class="px-4 py-3 text-left font-medium">Страница</th>
+                    <th class="px-4 py-3 text-left font-medium">Когда</th>
+                    <th class="px-4 py-3 text-left font-medium">Статус</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for t in threads %}
+                <tr class="hover:bg-gray-50 cursor-pointer" onclick="location.href='{{ admin_url('chats/' ~ t.id) }}'">
+                    <td class="px-4 py-3 text-gray-500">{{ t.id }}</td>
+                    <td class="px-4 py-3">
+                        <div class="font-medium text-gray-900">{{ t.visitor_name ?: 'Посетитель' }}</div>
+                        {% if t.visitor_contact %}<div class="text-xs text-gray-500">{{ t.visitor_contact }}</div>{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-gray-700 max-w-md truncate">
+                        {% if t.unread_admin > 0 %}<span class="inline-block w-2 h-2 rounded-full bg-blue-500 mr-1"></span>{% endif %}
+                        {{ t.last_body|default('—')|slice(0, 120) }}
+                    </td>
+                    <td class="px-4 py-3 text-gray-500 max-w-xs truncate">{{ t.page_url }}</td>
+                    <td class="px-4 py-3 text-gray-500 whitespace-nowrap">{{ (t.last_at ?: t.created_at)|slice(0, 16) }}</td>
+                    <td class="px-4 py-3">
+                        {% if t.status == 'closed' %}
+                        <span class="px-2 py-0.5 rounded-full bg-gray-200 text-gray-700 text-xs">закрыт</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-xs">открыт</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

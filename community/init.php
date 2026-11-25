@@ -151,14 +151,26 @@ $pm->addFilter('front.render', function ($data, $template) {
         return $data;
     }
 
-    // Дописываем к контенту, а не в конец страницы: тогда блок оказывается
-    // под статьёй, а не после подвала, и шаблоны тем править не нужно.
-    if (isset($data['page']['id'])) {
-        $data['page']['content'] = (string) ($data['page']['content'] ?? '') . $html;
-    } elseif (isset($data['post']['id'])) {
-        $data['post']['content'] = (string) ($data['post']['content'] ?? '') . $html;
+    // Блок запоминаем: на front.output проверим, доехал ли он до страницы.
+    \Plugins\Community\Comments::remember($html);
+
+    if ($comments->position() === 'end') {
+        return $data; // всё равно вставим в конец страницы
     }
 
+    // Дописываем к контенту, а не в конец страницы: тогда блок оказывается
+    // под статьёй, а не после подвала, и шаблоны тем править не нужно.
+    // Ключи page/post/item — всё, что ядро передаёт при рендере одной записи.
+    foreach (['page', 'post', 'item'] as $key) {
+        if (isset($data[$key]['id']) && is_string($data[$key]['content'] ?? null)) {
+            $data[$key]['content'] .= $html;
+            break;
+        }
+    }
+
+    // Если шаблон печатает контент не как <ключ>.content (карточка каталога
+    // грузит текст отдельным запросом), блок на страницу не попадёт —
+    // тогда его поставит front.output по маркеру.
     return $data;
 }, 10, 'community');
 
@@ -168,6 +180,23 @@ $pm->addFilter('front.output', function ($html) use ($pluginDir) {
     if (($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET') {
         return $html;
     }
+
+    // Комментарии: если блок отрисован, но шаблон темы его не напечатал
+    // (карточка каталога, товар, любая своя вёрстка без page.content),
+    // ставим его в конец <main>. Так работает без правки шаблонов.
+    $block = \Plugins\Community\Comments::rendered();
+    if ($block !== null && strpos($html, \Plugins\Community\Comments::MARKER) === false) {
+        $position = (new \Plugins\Community\Settings())->get('comments_position', 'auto');
+
+        if ($position !== 'content') {
+            if (stripos($html, '</main>') !== false) {
+                $html = preg_replace('#</main>#i', $block . '</main>', $html, 1) ?? $html;
+            } elseif (stripos($html, '</body>') !== false) {
+                $html = preg_replace('#</body>#i', $block . '</body>', $html, 1) ?? $html;
+            }
+        }
+    }
+
     if (strpos($html, 'apidcms-community') !== false) {
         return $html;
     }

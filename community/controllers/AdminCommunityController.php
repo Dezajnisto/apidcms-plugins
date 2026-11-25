@@ -25,9 +25,18 @@ class AdminCommunityController extends \Admin\BaseController
     {
         $store = $this->store();
 
+        // Адрес обсуждения считаем здесь: у темы он зависит от того, привязана
+        // она к странице, к записи каталога или живёт в форуме.
+        $links = new Links($store);
+        $pending = $store->pending(100);
+        foreach ($pending as &$post) {
+            $post['url'] = $links->topicUrlById((int) $post['topic_id']);
+        }
+        unset($post);
+
         $this->render('@community/admin/moderation.html.twig', [
             'title' => 'Сообщество',
-            'pending' => $store->pending(100),
+            'pending' => $pending,
             'pending_count' => $store->pendingCount(),
             'channels' => $store->channels('', true),
             'flash' => Flash::take(),

@@ -93,43 +93,9 @@ class Notify
         }
     }
 
-    /** Ссылка на обсуждение: тема форума или страница, к которой она привязана. */
+    /** Ссылка на обсуждение — общая логика в Links. */
     private function linkToTopic(array $topic): string
     {
-        $host = '';
-
-        try {
-            $row = $this->store->db()->query(
-                "SELECT setting_value FROM system_settings WHERE setting_key = 'site_url'"
-            )->fetch();
-            $host = rtrim((string) ($row['setting_value'] ?? ''), '/');
-        } catch (\Throwable $e) {
-            $host = '';
-        }
-
-        if ($host === '') {
-            $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-            $host = $scheme . '://' . ($_SERVER['HTTP_HOST'] ?? '');
-        }
-
-        $embed = (string) ($topic['embed_code'] ?? '');
-        if ($embed !== '' && strpos($embed, 'page:') === 0) {
-            $pageId = (int) substr($embed, strlen('page:'));
-            $page = $this->store->db()->query(
-                "SELECT slug FROM pages WHERE id = ?",
-                [$pageId]
-            )->fetch();
-
-            if ($page) {
-                return $host . '/' . ltrim((string) $page['slug'], '/') . '#comments';
-            }
-        }
-
-        if ($embed !== '' && strpos($embed, 'item:posts:') === 0) {
-            return $host . '/' . ltrim((string) ($topic['slug'] ?? ''), '/') . '#comments';
-        }
-
-        $prefix = $this->store->settings()->forumPrefix();
-        return $host . '/' . $prefix . '/' . ($topic['channel_slug'] ?? '') . '/' . ($topic['slug'] ?? '');
+        return (new Links($this->store))->topicUrl($topic, true);
     }
 }

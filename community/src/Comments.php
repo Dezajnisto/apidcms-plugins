@@ -12,6 +12,9 @@ namespace Plugins\Community;
 
 class Comments
 {
+    /** Маркер начала блока: по нему проверяем, попал ли блок на страницу. */
+    public const MARKER = '<!--apc-comments-->';
+
     private Store $store;
     private Settings $settings;
     private Guard $guard;
@@ -54,7 +57,39 @@ class Comments
             ];
         }
 
+        // Динамическая запись: пост блога, товар, промт в каталоге. Имя таблицы
+        // приходит в nav_item->source_table — по нему и строим код, иначе темы
+        // разных разделов с одинаковыми id слиплись бы в одну.
+        if (!empty($data['item']['id'])) {
+            $table = self::sourceTable($data);
+            if ($table === '') {
+                return null;
+            }
+
+            $item = $data['item'];
+            return [
+                'code' => 'item:' . $table . ':' . (int) $item['id'],
+                'subject' => (string) ($item['title'] ?? $item['name'] ?? 'Запись'),
+            ];
+        }
+
         return null;
+    }
+
+    /** Имя таблицы раздела из nav_item (объект NavigationItem или массив). */
+    private static function sourceTable(array $data): string
+    {
+        $nav = $data['nav_item'] ?? null;
+
+        $table = '';
+        if (is_object($nav)) {
+            $table = (string) ($nav->source_table ?? '');
+        } elseif (is_array($nav)) {
+            $table = (string) ($nav['source_table'] ?? '');
+        }
+
+        // в шаблон попадает только проверенное имя: оно идёт в SQL-запрос
+        return preg_match('/^[a-z0-9_]+$/i', $table) ? $table : '';
     }
 
     public function enabled(): bool
@@ -73,6 +108,34 @@ class Comments
         }
 
         return false;
+    }
+
+    /**
+     * Блок, отрисованный в текущем запросе.
+     *
+     * front.render отдаёт данные шаблону, а готовый HTML появляется позже —
+     * поэтому блок запоминаем и на front.output проверяем, доехал ли он
+     * до страницы. Если шаблон темы печатает контент не как page.content
+     * (каталог, карточка товара), блок туда не попал — вставляем его в конец
+     * <main>, иначе комментарии просто не покажутся.
+     */
+    private static ?string $rendered = null;
+
+    public static function remember(string $html): void
+    {
+        self::$rendered = $html;
+    }
+
+    public static function rendered(): ?string
+    {
+        return self::$rendered;
+    }
+
+    /** Куда ставить блок: auto | content | end (настройка comments_position). */
+    public function position(): string
+    {
+        $value = (string) $this->settings->get('comments_position', 'auto');
+        return in_array($value, ['auto', 'content', 'end'], true) ? $value : 'auto';
     }
 
     /** HTML блока комментариев для вставки под текстом страницы. */
@@ -101,7 +164,9 @@ class Comments
 
         $deny = $this->guard->denyReason($channel);
 
-        return Render::fragment('@community/comments.html.twig', [
+        // Маркер нужен, чтобы на front.output точно знать: блок уже на
+        // странице (шаблон его напечатал) или его надо добавить самим.
+        $html = Render::fragment('@community/comments.html.twig', [
             'code' => $code,
             'subject' => $subject,
             'channel' => $channel,
@@ -120,6 +185,8 @@ class Comments
             'upload_max' => $this->settings->int('upload_max_mb', 5),
             'return_to' => (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH),
         ]);
+
+        return $html === '' ? '' : self::MARKER . $html;
     }
 
     /**

@@ -45,23 +45,24 @@
                                 </div>
 
                                 <div class="flex flex-wrap items-center gap-2">
-                                    {% for action, label, cls in [
-                                        ['approve', 'Опубликовать', 'bg-green-600 text-white border-green-600'],
-                                        ['spam', 'Спам', 'bg-white text-gray-700 border-gray-300'],
-                                        ['delete', 'Удалить', 'bg-white text-red-600 border-red-300']
-                                    ] %}
+                                    {# Twig поддерживает максимум две переменные в for (ключ и значение),
+                                       три ломаются с «Array to string conversion» в логах. #}
+                                    {% for action, meta in {
+                                        approve: ['Опубликовать', 'bg-green-600 text-white border-green-600'],
+                                        spam: ['Спам', 'bg-white text-gray-700 border-gray-300'],
+                                        delete: ['Удалить', 'bg-white text-red-600 border-red-300']
+                                    } %}
                                         <form method="post" action="{{ admin_url('community/moderate') }}">
                                             <input type="hidden" name="post_id" value="{{ post.id }}">
                                             <button name="action" value="{{ action }}"
-                                                    class="px-3 py-1.5 rounded-md text-sm border {{ cls }}">
-                                                {{ label }}
+                                                    class="px-3 py-1.5 rounded-md text-sm border {{ meta[1] }}">
+                                                {{ meta[0] }}
                                             </button>
                                         </form>
                                     {% endfor %}
 
-                                    {% if post.channel_slug and post.topic_slug %}
-                                        <a href="/{{ post.channel_slug }}/{{ post.topic_slug }}"
-                                           target="_blank"
+                                    {% if post.url %}
+                                        <a href="{{ post.url }}" target="_blank"
                                            class="text-sm text-blue-600 hover:underline ml-2">
                                             открыть на сайте
                                         </a>

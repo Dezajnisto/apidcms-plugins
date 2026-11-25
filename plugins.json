@@ -180,6 +180,24 @@
         "widget"
       ],
       "min_cms_version": "2.8.0"
+    },
+    {
+      "name": "community",
+      "version": "1.0.0",
+      "title": "Community (форум, комментарии, сообщества)",
+      "description": "Форум, комментарии к страницам и закрытые сообщества на одном наборе таблиц: тема форума умеет привязываться к странице сайта и работать как комментарии.",
+      "icon": "🗣",
+      "author": "@apidcms-team",
+      "category": "content",
+      "dependencies": [],
+      "tags": [
+        "forum",
+        "comments",
+        "community",
+        "discussion",
+        "moderation"
+      ],
+      "min_cms_version": "2.8.0"
     }
   ]
 }

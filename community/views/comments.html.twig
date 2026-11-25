@@ -1,0 +1,89 @@
+{#
+    Блок комментариев под текстом страницы.
+    Вставляется в конец page.content (front.render), поэтому не наследует
+    base.html.twig — это фрагмент внутри статьи.
+#}
+{% import '@community/partials/post.html.twig' as ui %}
+
+<section class="wcc wcc-comments" id="comments">
+    <div class="wcc-comments__head">
+        <h2 class="wcc-comments__title">
+            Комментарии{% if total %} <span class="wcc-comments__count">{{ total }}</span>{% endif %}
+        </h2>
+    </div>
+
+    {% if flash %}
+        <div class="wcc-flash wcc-flash--{{ flash.type }}">{{ flash.text }}</div>
+    {% endif %}
+
+    {% if posts is empty %}
+        <p class="wcc-empty wcc-empty--inline">Пока никто не комментировал. Будьте первым.</p>
+    {% else %}
+        <div class="wcc-posts">
+            {% for post in posts %}
+                {{ ui.item(post, {
+                    can_moderate: false,
+                    csrf: '',
+                    reply_url: '?reply_to=',
+                    moderate_url: ''
+                }) }}
+            {% endfor %}
+        </div>
+
+        {% if pages > 1 %}
+            <div class="wcc-pager">
+                {% for p in 1..pages %}
+                    {% if p == page %}
+                        <span class="wcc-pager__item wcc-pager__item--active">{{ p }}</span>
+                    {% else %}
+                        <a class="wcc-pager__item" href="?cpage={{ p }}#comments">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <div id="reply" class="wcc-reply">
+        {% if can_post %}
+            <form method="post" action="/community/reply" class="wcc-form"
+                  data-upload="{{ uploads ? '/community/upload' : '' }}" data-max="{{ upload_max }}">
+                {{ csrf|raw }}
+                <input type="hidden" name="embed_code" value="{{ code }}">
+                <input type="hidden" name="subject" value="{{ subject }}">
+                <input type="hidden" name="return_to" value="{{ return_to }}">
+                <input type="hidden" name="parent_id" id="wcc-parent-id" value="0">
+                <input type="hidden" name="_t" value="{{ 'now'|date('U') }}">
+                <div class="wcc-honeypot" aria-hidden="true">
+                    <input type="text" name="website" tabindex="-1" autocomplete="off">
+                </div>
+
+                {% if user is null %}
+                    <div class="wcc-guest">
+                        <input class="wcc-input" type="text" name="guest_name" maxlength="60" required
+                               placeholder="Ваше имя">
+                        <input class="wcc-input" type="email" name="guest_email" maxlength="120"
+                               placeholder="Почта (не публикуется, для ответа)">
+                    </div>
+                {% endif %}
+
+                <textarea class="wcc-textarea" name="content" rows="4" required
+                          placeholder="Ваш комментарий. Можно картинку и markdown."></textarea>
+
+                <div class="wcc-form__foot">
+                    <div class="wcc-form__tools">
+                        {% if uploads %}
+                            <label class="wcc-btn wcc-btn--ghost wcc-file">
+                                Прикрепить картинку
+                                <input type="file" accept="image/*" hidden>
+                            </label>
+                        {% endif %}
+                        <span class="wcc-upload-status" hidden></span>
+                    </div>
+                    <button class="wcc-btn" type="submit">Отправить</button>
+                </div>
+            </form>
+        {% else %}
+            <div class="wcc-note">{{ deny }}</div>
+        {% endif %}
+    </div>
+</section>

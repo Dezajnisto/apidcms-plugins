@@ -1,0 +1,103 @@
+{% extends 'base.html.twig' %}
+{% import '@community/partials/post.html.twig' as ui %}
+
+{% block title %}{{ topic.subject }} — {{ channel.title }}{% endblock %}
+
+{% block content %}
+<div class="wcc">
+    <nav class="wcc-crumbs">
+        <a href="/{{ prefix }}">Форум</a> <span>/</span>
+        <a href="/{{ prefix }}/{{ channel.slug }}">{{ channel.title }}</a> <span>/</span>
+        <span>{{ topic.subject }}</span>
+    </nav>
+
+    <div class="wcc-head wcc-head--row">
+        <h1 class="wcc-title">{{ topic.subject }}</h1>
+        {% if can_moderate %}
+            <form method="post" action="/{{ prefix }}/{{ channel.slug }}/{{ topic.slug }}/moderate" class="wcc-inline">
+                {{ csrf|raw }}
+                {% if topic.is_locked %}
+                    <button class="wcc-btn wcc-btn--ghost" name="action" value="unlock">Открыть тему</button>
+                {% else %}
+                    <button class="wcc-btn wcc-btn--ghost" name="action" value="lock">Закрыть тему</button>
+                {% endif %}
+                {% if topic.is_sticky %}
+                    <button class="wcc-btn wcc-btn--ghost" name="action" value="unstick">Открепить</button>
+                {% else %}
+                    <button class="wcc-btn wcc-btn--ghost" name="action" value="stick">Закрепить</button>
+                {% endif %}
+            </form>
+        {% endif %}
+    </div>
+
+    {% if flash %}
+        <div class="wcc-flash wcc-flash--{{ flash.type }}">{{ flash.text }}</div>
+    {% endif %}
+
+    <div class="wcc-posts">
+        {% for post in posts %}
+            {{ ui.item(post, {
+                can_moderate: can_moderate,
+                csrf: csrf|raw,
+                reply_url: '/' ~ prefix ~ '/' ~ channel.slug ~ '/' ~ topic.slug ~ '?reply_to=',
+                moderate_url: '/' ~ prefix ~ '/' ~ channel.slug ~ '/' ~ topic.slug ~ '/moderate'
+            }) }}
+        {% endfor %}
+    </div>
+
+    {% if pages > 1 %}
+        <div class="wcc-pager">
+            {% for p in 1..pages %}
+                {% if p == page %}
+                    <span class="wcc-pager__item wcc-pager__item--active">{{ p }}</span>
+                {% else %}
+                    <a class="wcc-pager__item" href="/{{ prefix }}/{{ channel.slug }}/{{ topic.slug }}?page={{ p }}">{{ p }}</a>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div id="reply" class="wcc-reply">
+        {% if can_post %}
+            <form method="post" action="/{{ prefix }}/{{ channel.slug }}/{{ topic.slug }}/reply"
+                  class="wcc-form" data-upload="{{ uploads ? '/community/upload' : '' }}"
+                  data-max="{{ upload_max }}">
+                {{ csrf|raw }}
+                <input type="hidden" name="parent_id" value="{{ reply_to }}">
+                <input type="hidden" name="_t" value="{{ 'now'|date('U') }}">
+                <div class="wcc-honeypot" aria-hidden="true">
+                    <input type="text" name="website" tabindex="-1" autocomplete="off">
+                </div>
+
+                {% if need_name %}
+                    <input class="wcc-input" type="text" name="guest_name" maxlength="60" required
+                           placeholder="Ваше имя">
+                {% endif %}
+
+                <label class="wcc-label" for="wcc-content">Ответ</label>
+                <textarea class="wcc-textarea" id="wcc-content" name="content" rows="5" required
+                          placeholder="Пишите по делу. Markdown: **жирный**, `код`, списки, ссылки."></textarea>
+
+                <div class="wcc-form__foot">
+                    <div class="wcc-form__tools">
+                        {% if uploads %}
+                            <label class="wcc-btn wcc-btn--ghost wcc-file">
+                                Прикрепить картинку
+                                <input type="file" accept="image/*" hidden>
+                            </label>
+                        {% endif %}
+                        <label class="wcc-check">
+                            <input type="checkbox" name="notify" value="1" checked>
+                            сообщить об ответах письмом
+                        </label>
+                    </div>
+                    <button class="wcc-btn" type="submit">Отправить</button>
+                </div>
+                <div class="wcc-upload-status" hidden></div>
+            </form>
+        {% else %}
+            <div class="wcc-note">{{ deny }}</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

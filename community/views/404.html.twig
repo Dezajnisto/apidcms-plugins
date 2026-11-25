@@ -1,0 +1,11 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="wcc wcc--narrow">
+    <h1 class="wcc-title">{{ title }}</h1>
+    <p class="wcc-sub">{{ message }}</p>
+    <p class="wcc-hint"><a href="/{{ prefix }}">Перейти на форум</a> · <a href="/">На главную</a></p>
+</div>
+{% endblock %}

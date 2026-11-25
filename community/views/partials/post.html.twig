@@ -1,0 +1,48 @@
+{#
+    Одно сообщение: форум и комментарии рисуют его одним и тем же макросом,
+    чтобы не расходились вид и поведение.
+
+    o.can_moderate — показывать кнопки модератора
+    o.csrf         — готовое поле <input type="hidden" name="_csrf" ...>
+    o.reply_url    — префикс ссылки «Ответить» (к нему добавится id сообщения)
+    o.moderate_url — куда отправлять действия модератора
+#}
+{% macro item(p, o) %}
+<article class="wcc-post{% if p.status == 'pending' %} wcc-post--pending{% endif %}" id="post-{{ p.id }}">
+    <div class="wcc-post__avatar" aria-hidden="true">{{ (p.user_id ? p.user_name : p.guest_name)|default('?')|slice(0, 1)|upper }}</div>
+    <div class="wcc-post__body">
+        <div class="wcc-post__head">
+            <span class="wcc-post__author">{{ p.user_id ? (p.user_name ?: 'Пользователь') : (p.guest_name ?: 'Гость') }}</span>
+            {% if not p.user_id %}<span class="wcc-badge">гость</span>{% endif %}
+            {% if p.status == 'pending' %}<span class="wcc-badge wcc-badge--pending">на проверке</span>{% endif %}
+            <time class="wcc-post__date">{{ p.created_at|date('d.m.Y H:i') }}</time>
+        </div>
+
+        {% if p.parent_id %}
+            <div class="wcc-post__replyto">в ответ на <a href="#post-{{ p.parent_id }}">#{{ p.parent_id }}</a></div>
+        {% endif %}
+
+        <div class="wcc-post__text">{{ p.content_html|raw }}</div>
+
+        {% if o.reply_url or o.can_moderate %}
+            <div class="wcc-post__actions">
+                {% if o.reply_url and p.status == 'published' %}
+                    <a class="wcc-link" href="{{ o.reply_url }}{{ p.id }}#reply">Ответить</a>
+                {% endif %}
+
+                {% if o.can_moderate %}
+                    <form method="post" action="{{ o.moderate_url }}" class="wcc-inline">
+                        {{ o.csrf|raw }}
+                        <input type="hidden" name="post_id" value="{{ p.id }}">
+                        {% if p.status == 'pending' %}
+                            <button class="wcc-link" name="action" value="approve">Опубликовать</button>
+                        {% endif %}
+                        <button class="wcc-link wcc-link--danger" name="action" value="delete"
+                                onclick="return confirm('Удалить сообщение?')">Удалить</button>
+                    </form>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</article>
+{% endmacro %}

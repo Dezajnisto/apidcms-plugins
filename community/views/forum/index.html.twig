@@ -1,0 +1,41 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Форум — {{ site_title }}{% endblock %}
+
+{% block content %}
+<div class="wcc">
+    <div class="wcc-head">
+        <h1 class="wcc-title">Форум</h1>
+        <p class="wcc-sub">Вопросы, ответы и объявления. Писать могут зарегистрированные — так меньше спама.</p>
+    </div>
+
+    {% if flash %}
+        <div class="wcc-flash wcc-flash--{{ flash.type }}">{{ flash.text }}</div>
+    {% endif %}
+
+    {% if channels is empty %}
+        <div class="wcc-empty">Разделы ещё не созданы. Загляните позже.</div>
+    {% else %}
+        <div class="wcc-channels">
+            {% for channel in channels %}
+                <a class="wcc-channel" href="/{{ prefix }}/{{ channel.slug }}">
+                    <div class="wcc-channel__main">
+                        <div class="wcc-channel__title">{{ channel.title }}</div>
+                        {% if channel.description %}
+                            <div class="wcc-channel__desc">{{ channel.description }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="wcc-channel__meta">
+                        <span>{{ channel.count_topics }} тем</span>
+                        <span>{{ channel.count_posts }} сообщений</span>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if user is null %}
+        <p class="wcc-hint">Чтобы открыть тему или ответить, <a href="/login">войдите</a>.</p>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Новая тема — {{ channel.title }}{% endblock %}
+
+{% block content %}
+<div class="wcc wcc--narrow">
+    <nav class="wcc-crumbs">
+        <a href="/{{ prefix }}">Форум</a> <span>/</span>
+        <a href="/{{ prefix }}/{{ channel.slug }}">{{ channel.title }}</a> <span>/</span>
+        <span>Новая тема</span>
+    </nav>
+
+    <h1 class="wcc-title">Новая тема</h1>
+
+    {% if flash %}
+        <div class="wcc-flash wcc-flash--{{ flash.type }}">{{ flash.text }}</div>
+    {% endif %}
+
+    <form method="post" action="/{{ prefix }}/{{ channel.slug }}/new" class="wcc-form"
+          data-upload="{{ uploads ? '/community/upload' : '' }}" data-max="{{ upload_max }}">
+        {{ csrf|raw }}
+        <input type="hidden" name="_t" value="{{ 'now'|date('U') }}">
+        <div class="wcc-honeypot" aria-hidden="true">
+            <input type="text" name="website" tabindex="-1" autocomplete="off">
+        </div>
+
+        {% if need_name %}
+            <label class="wcc-label" for="wcc-guest">Ваше имя</label>
+            <input class="wcc-input" id="wcc-guest" type="text" name="guest_name" maxlength="60" required>
+        {% endif %}
+
+        <label class="wcc-label" for="wcc-subject">Заголовок</label>
+        <input class="wcc-input" id="wcc-subject" type="text" name="subject" maxlength="150" required
+               placeholder="Коротко: о чём тема">
+
+        <label class="wcc-label" for="wcc-content">Сообщение</label>
+        <textarea class="wcc-textarea" id="wcc-content" name="content" rows="8" required
+                  placeholder="Подробно. Markdown: **жирный**, `код`, списки, ссылки."></textarea>
+
+        <div class="wcc-form__foot">
+            <div class="wcc-form__tools">
+                {% if uploads %}
+                    <label class="wcc-btn wcc-btn--ghost wcc-file">
+                        Прикрепить картинку
+                        <input type="file" accept="image/*" hidden>
+                    </label>
+                {% endif %}
+            </div>
+            <button class="wcc-btn" type="submit">Создать тему</button>
+        </div>
+        <div class="wcc-upload-status" hidden></div>
+    </form>
+</div>
+{% endblock %}

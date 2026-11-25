@@ -1,0 +1,69 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ channel.title }} — форум{% endblock %}
+
+{% block content %}
+<div class="wcc">
+    <nav class="wcc-crumbs">
+        <a href="/{{ prefix }}">Форум</a> <span>/</span> <span>{{ channel.title }}</span>
+    </nav>
+
+    <div class="wcc-head wcc-head--row">
+        <div>
+            <h1 class="wcc-title">{{ channel.title }}</h1>
+            {% if channel.description %}
+                <p class="wcc-sub">{{ channel.description }}</p>
+            {% endif %}
+        </div>
+        {% if can_post %}
+            <a class="wcc-btn" href="/{{ prefix }}/{{ channel.slug }}/new">Новая тема</a>
+        {% endif %}
+    </div>
+
+    {% if flash %}
+        <div class="wcc-flash wcc-flash--{{ flash.type }}">{{ flash.text }}</div>
+    {% endif %}
+
+    {% if not can_post and deny %}
+        <div class="wcc-note">{{ deny }}</div>
+    {% endif %}
+
+    {% if topics is empty %}
+        <div class="wcc-empty">Пока ни одной темы. {% if can_post %}Начните первую — она появится сразу.{% endif %}</div>
+    {% else %}
+        <div class="wcc-topics">
+            {% for topic in topics %}
+                <a class="wcc-topic" href="/{{ prefix }}/{{ channel.slug }}/{{ topic.slug }}">
+                    <div class="wcc-topic__main">
+                        <div class="wcc-topic__title">
+                            {% if topic.is_sticky %}<span class="wcc-badge wcc-badge--sticky">закреплено</span>{% endif %}
+                            {% if topic.is_locked %}<span class="wcc-badge">закрыто</span>{% endif %}
+                            {{ topic.subject }}
+                        </div>
+                        <div class="wcc-topic__by">
+                            {{ topic.author_name ?: 'Автор удалён' }}
+                            {% if topic.last_post_at %}· последний ответ {{ topic.last_post_at|date('d.m.Y H:i') }}{% endif %}
+                        </div>
+                    </div>
+                    <div class="wcc-topic__count">
+                        <strong>{{ topic.count_posts }}</strong>
+                        <span>ответов</span>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+
+        {% if pages > 1 %}
+            <div class="wcc-pager">
+                {% for p in 1..pages %}
+                    {% if p == page %}
+                        <span class="wcc-pager__item wcc-pager__item--active">{{ p }}</span>
+                    {% else %}
+                        <a class="wcc-pager__item" href="/{{ prefix }}/{{ channel.slug }}?page={{ p }}">{{ p }}</a>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+{% endblock %}

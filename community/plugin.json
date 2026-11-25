@@ -1,0 +1,112 @@
+{
+  "name": "community",
+  "version": "1.0.0",
+  "description": "Форум, комментарии к страницам и сообщества на одном наборе таблиц",
+  "enabled": false,
+  "dependencies": [],
+  "routes": {
+    "forum": "/forum"
+  },
+  "settings": [
+    {
+      "key": "forum_prefix",
+      "type": "text",
+      "value": "forum",
+      "label": "Адрес форума",
+      "description": "Первый сегмент пути, по умолчанию forum → /forum"
+    },
+    {
+      "key": "comments_enabled",
+      "type": "checkbox",
+      "value": true,
+      "label": "Комментарии к страницам",
+      "description": "Показывать блок комментариев под текстом страниц и постов блога"
+    },
+    {
+      "key": "comments_channel",
+      "type": "text",
+      "value": "comments",
+      "label": "Канал для комментариев",
+      "description": "Слуг канала, куда складываются темы страниц. В списке форума он скрыт"
+    },
+    {
+      "key": "comments_guests",
+      "type": "checkbox",
+      "value": true,
+      "label": "Гости могут комментировать",
+      "description": "Без регистрации, но с обязательным именем и проверкой на спам"
+    },
+    {
+      "key": "comments_per_page",
+      "type": "number",
+      "value": 30,
+      "label": "Комментариев на странице"
+    },
+    {
+      "key": "comments_exclude",
+      "type": "textarea",
+      "value": "",
+      "label": "Где не показывать",
+      "description": "По одному пути в строке, например /policy или /order"
+    },
+    {
+      "key": "forum_guests_read",
+      "type": "checkbox",
+      "value": true,
+      "label": "Форум читают все",
+      "description": "Выключите, чтобы форум был виден только вошедшим"
+    },
+    {
+      "key": "posts_per_10min",
+      "type": "number",
+      "value": 5,
+      "label": "Сообщений с одного адреса за 10 минут"
+    },
+    {
+      "key": "topics_per_hour",
+      "type": "number",
+      "value": 3,
+      "label": "Новых тем с одного адреса в час"
+    },
+    {
+      "key": "min_fill_seconds",
+      "type": "number",
+      "value": 3,
+      "label": "Минимум секунд на заполнение формы",
+      "description": "Защита от ботов: форма, отправленная быстрее, не принимается"
+    },
+    {
+      "key": "stop_words",
+      "type": "textarea",
+      "value": "",
+      "label": "Стоп-слова",
+      "description": "По одному в строке. Сообщение с таким словом уходит в спам"
+    },
+    {
+      "key": "uploads_enabled",
+      "type": "checkbox",
+      "value": true,
+      "label": "Картинки в сообщениях"
+    },
+    {
+      "key": "upload_max_mb",
+      "type": "number",
+      "value": 5,
+      "label": "Размер картинки, МБ"
+    },
+    {
+      "key": "notify_email",
+      "type": "checkbox",
+      "value": true,
+      "label": "Письма об ответах",
+      "description": "Если на сайте не настроен SMTP, письма просто не уйдут"
+    }
+  ],
+  "tables": [
+    "plugin_community_channels",
+    "plugin_community_topics",
+    "plugin_community_posts",
+    "plugin_community_followers",
+    "plugin_community_members"
+  ]
+}

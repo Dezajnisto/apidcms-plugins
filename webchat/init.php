@@ -71,8 +71,17 @@ $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
 // === Публичные маршруты: скрипт виджета, API, вебхуки ===
 
 $pm->addAction('front.router.before', function ($path, $frontController) {
+    $path = trim((string) $path, '/');
+
+    // Путь иногда приходит пустым (локализация/переписывание URL): тогда
+    // берём его из REQUEST_URI, иначе запрос уходит в общий 404 и виджет
+    // «пропадает» с части загрузок.
+    if ($path === '') {
+        $path = trim((string) parse_url($_SERVER['REQUEST_URI'] ?? '', PHP_URL_PATH), '/');
+    }
+
     try {
-        \Plugins\Webchat\FrontChatController::handle((string) $path);
+        \Plugins\Webchat\FrontChatController::handle($path);
     } catch (\Throwable $e) {
         error_log('webchat: ' . $e->getMessage());
     }
@@ -104,7 +113,13 @@ $pm->addFilter('front.output', function ($html) use ($pluginDir) {
         . (string) @filemtime($pluginDir . '/assets/widget.css');
     $version = substr(md5($stamp), 0, 8);
 
-    $snippet = '<script src="/chat/widget?v=' . $version . '" defer></script>';
+    // onerror — страховка от разовой неудачи: если скрипт не отдался
+    // (перезапуск php-fpm, краткий 404), виджет не исчезает навсегда,
+    // а пробует загрузиться ещё раз с другим адресом.
+    $snippet = '<script src="/chat/widget?v=' . $version . '" defer onerror="'
+        . 'var s=document.createElement(&quot;script&quot;);'
+        . 's.src=&quot;/chat/widget?v=' . $version . '&amp;r=1&quot;;'
+        . 's.defer=true;document.body.appendChild(s);"></script>';
 
     $replaced = preg_replace(
         '#</body>#i',

@@ -8,6 +8,12 @@
   all: initial;
 }
 
+/* Атрибут hidden обязан побеждать display: flex/block ниже, иначе окно чата
+   висит открытым на каждой странице с самого начала. */
+[hidden] {
+  display: none !important;
+}
+
 :host, :host * {
   box-sizing: border-box;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;

@@ -11,9 +11,9 @@ namespace Plugins\Webchat;
 class FrontChatController
 {
     private const MAX_MESSAGE_LENGTH = 2000;
-    private const RATE_MESSAGES = 30;      // сообщений
+    private const RATE_MESSAGES = 60;         // сообщений
     private const RATE_MESSAGES_WINDOW = 600; // за 10 минут с одного IP
-    private const RATE_THREADS = 5;        // новых обращений
+    private const RATE_THREADS = 10;          // новых обращений
     private const RATE_THREADS_WINDOW = 3600;
 
     private static ?Chat $chat = null;
@@ -252,7 +252,7 @@ class FrontChatController
 
         if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) {
             http_response_code(304);
-            return;
+            exit;
         }
 
         header('Content-Length: ' . filesize($path));
@@ -285,9 +285,12 @@ class FrontChatController
         header('Cache-Control: public, max-age=86400');
         header('ETag: ' . $etag);
 
+        // exit, а не return: если отдать управление обратно во FrontController,
+        // он нарисует 404 и перетрёт статус. Браузер тогда видит 404 с пустым
+        // телом и не грузит скрипт — виджет «пропадает» через раз.
         if (trim((string) ($_SERVER['HTTP_IF_NONE_MATCH'] ?? '')) === $etag) {
             http_response_code(304);
-            return;
+            exit;
         }
 
         $js = (string) file_get_contents($jsFile);

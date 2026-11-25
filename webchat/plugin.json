@@ -1,6 +1,6 @@
 {
   "name": "webchat",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Веб-чат поддержки: виджет на сайте, ответы из MAX или Telegram",
   "enabled": false,
   "dependencies": [],

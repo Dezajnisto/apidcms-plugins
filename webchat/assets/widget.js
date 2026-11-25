@@ -1,8 +1,8 @@
 /* Веб-чат apidcms — виджет посетителя.
  *
- * Без зависимостей и без CDN: скрипт отдаёт сам сайт (/chat/widget.js).
+ * Без зависимостей и без CDN: скрипт отдаёт сам сайт (/chat/widget).
  * Всё живёт в Shadow DOM, поэтому CSS темы не ломает виджет и наоборот.
- * Ничего не грузится и не опрашивается, пока посетитель не открыл чат.
+ * Ничего не опрашивается, пока посетитель не открыл чат.
  */
 (function () {
   'use strict';
@@ -17,7 +17,9 @@
   // CSS подставляет сервер в ответ /chat/widget (см. FrontChatController).
   var CSS = __WC_CSS__;
 
-  var STORAGE_KEY = 'apidcms_chat_token';
+  var KEY_TOKEN = 'apidcms_chat_token';
+  var KEY_CONFIG = 'apidcms_chat_config';
+  var KEY_SEEN = 'apidcms_chat_seen';
   var POLL_MS = 3000;
   var MAX_LEN = 2000;
 
@@ -28,7 +30,8 @@
     open: false,
     config: null,
     polling: false,
-    sending: false
+    sending: false,
+    loading: false
   };
 
   function store(key, value) {
@@ -39,6 +42,11 @@
   }
   function drop(key) {
     try { window.localStorage.removeItem(key); } catch (e) { /* ignore */ }
+  }
+  function loadJson(key) {
+    var raw = load(key);
+    if (!raw) { return null; }
+    try { return JSON.parse(raw); } catch (e) { return null; }
   }
 
   function api(path) {
@@ -60,9 +68,9 @@
   host.setAttribute('data-apidcms-chat', '');
   var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
 
-  var link = document.createElement('style');
-  link.textContent = CSS;
-  root.appendChild(link);
+  var style = document.createElement('style');
+  style.textContent = CSS;
+  root.appendChild(style);
 
   var bubble = document.createElement('button');
   bubble.type = 'button';
@@ -78,6 +86,8 @@
   var panel = document.createElement('div');
   panel.className = 'wc-panel';
   panel.hidden = true;
+  panel.setAttribute('role', 'dialog');
+  panel.setAttribute('aria-label', 'Чат с поддержкой');
   panel.innerHTML =
     '<div class="wc-head">' +
       '<div class="wc-head-text"><div class="wc-title"></div><div class="wc-status"></div></div>' +
@@ -110,6 +120,12 @@
 
   // ------------------------------------------------------------------ отрисовка
 
+  function clearMessages() {
+    els.body.innerHTML = '';
+    state.seen = {};
+    state.lastId = 0;
+  }
+
   function addMessage(m, scroll) {
     // Ответ на send и опрос приходят почти одновременно: без этого набора
     // одно и то же сообщение рисуется дважды (гонка in-flight запроса).
@@ -127,29 +143,52 @@
     row.appendChild(text);
     els.body.appendChild(row);
     if (scroll !== false) { els.body.scrollTop = els.body.scrollHeight; }
-    if (typeof m.id === 'number' && m.id > state.lastId) { state.lastId = m.id; }
+    if (typeof m.id === 'number' && m.id > state.lastId) {
+      state.lastId = m.id;
+      store(KEY_SEEN, String(m.id));
+    }
   }
 
   function addNotice(text) {
+    if (!text) { return; }
+    // Не дублируем одинаковую плашку: при обрыве связи ошибка приходит
+    // на каждую попытку отправки и заваливает окно.
+    var prev = els.body.lastElementChild;
+    if (prev && prev.className === 'wc-notice' && prev.textContent === text) { return; }
+
     var note = document.createElement('div');
     note.className = 'wc-notice';
     note.textContent = text;
     els.body.appendChild(note);
-    els.body.scrollTop = els.body.scrollHeight;
   }
 
+  /**
+   * Применить настройки. Вызывается сразу при загрузке (из кеша) и после
+   * ответа сервера — поэтому цвет и заголовок видны с первого кадра, а не
+   * после первого сообщения.
+   */
   function applyConfig(config) {
+    if (!config || typeof config !== 'object') { return; }
     state.config = config;
-    els.title.textContent = config.title || 'Поддержка';
+
+    if (config.title) { els.title.textContent = config.title; }
     els.status.textContent = config.online ? 'на связи' : 'не в сети';
     els.status.className = 'wc-status ' + (config.online ? 'wc-online' : 'wc-offline');
 
-    if (config.color) {
-      host.style.setProperty('--wc-color', config.color);
-    }
+    if (config.color) { host.style.setProperty('--wc-color', config.color); }
     if (config.position === 'left') {
       host.classList.add('wc-left');
+    } else {
+      host.classList.remove('wc-left');
     }
+  }
+
+  function refreshConfig() {
+    return api('config').then(function (res) {
+      if (!res || res.ok === false) { return; }
+      applyConfig(res);
+      store(KEY_CONFIG, JSON.stringify(res));
+    }).catch(function () { /* работаем на кеше */ });
   }
 
   // ------------------------------------------------------------------ действия
@@ -166,9 +205,8 @@
         throw new Error(res.error || 'не удалось начать чат');
       }
       state.token = res.token;
-      store(STORAGE_KEY, res.token);
+      store(KEY_TOKEN, res.token);
       applyConfig(res);
-      if (res.greeting) { addNotice(res.greeting); }
       return res.token;
     });
   }
@@ -176,13 +214,16 @@
   function send(text) {
     if (state.sending || !text) { return; }
     state.sending = true;
+    var btn = els.form.querySelector('.wc-send');
+    if (btn) { btn.disabled = true; }
+
     ensureThread()
       .then(function () {
         return apiPost('send', { token: state.token, text: text });
       })
       .then(function (res) {
         if (res.expired) {
-          drop(STORAGE_KEY);
+          drop(KEY_TOKEN);
           state.token = null;
           return send(text);
         }
@@ -194,21 +235,37 @@
       .catch(function (err) {
         addNotice(err.message || 'Сеть недоступна. Попробуйте ещё раз.');
       })
-      .then(function () { state.sending = false; });
+      .then(function () {
+        state.sending = false;
+        if (btn) { btn.disabled = false; }
+      });
   }
 
-  function poll() {
-    if (!state.token) { return; }
-    api('poll?token=' + encodeURIComponent(state.token) + '&after=' + state.lastId)
+  /**
+   * Забрать сообщения. after=0 — вся история (при открытии), иначе только новые.
+   */
+  function poll(after) {
+    if (!state.token) { return Promise.resolve(); }
+    var from = (typeof after === 'number') ? after : state.lastId;
+
+    return api('poll?token=' + encodeURIComponent(state.token) + '&after=' + from)
       .then(function (res) {
-        if (!res.ok) {
-          if (res.expired) { state.token = null; drop(STORAGE_KEY); }
+        if (!res || !res.ok) {
+          if (res && res.expired) {
+            state.token = null;
+            drop(KEY_TOKEN);
+          }
           return;
         }
-        (res.messages || []).forEach(function (m) {
+        var incoming = res.messages || [];
+        var unseenOut = 0;
+
+        incoming.forEach(function (m) {
           addMessage(m);
-          if (m.direction === 'out' && !state.open) { showBadge(); }
+          if (m.direction === 'out' && !state.open) { unseenOut++; }
         });
+
+        if (unseenOut > 0) { showBadge(unseenOut); }
       })
       .catch(function () { /* тихо: следующий опрос */ });
   }
@@ -216,50 +273,54 @@
   function startPolling() {
     if (state.polling) { return; }
     state.polling = true;
-    poll();
     setInterval(function () {
       if (state.open) { poll(); }
     }, POLL_MS);
   }
 
-  function showBadge() {
+  function showBadge(count) {
     badge.hidden = false;
-    badge.textContent = '1';
+    badge.textContent = count > 1 ? String(count) : '1';
   }
   function hideBadge() {
     badge.hidden = true;
   }
 
   function open() {
+    if (state.open) { return; }
     state.open = true;
     panel.hidden = false;
+    bubble.hidden = true;   // иконка скрывается, пока окно открыто
     hideBadge();
-    els.input.focus();
 
-    if (!state.config) {
-      api('config').then(function (res) {
-        if (res && res.ok !== false) { applyConfig(res); }
-      }).catch(function () { /* покажем дефолт */ });
-    }
+    // История и приветствие — заново, чтобы не было дублей после переоткрытия.
+    clearMessages();
+    addNotice((state.config && state.config.greeting) || '');
+    els.body.scrollTop = 0;
 
-    if (!state.token) {
-      state.token = load(STORAGE_KEY);
-    }
+    if (!state.token) { state.token = load(KEY_TOKEN); }
+
+    refreshConfig();
+
     if (state.token) {
-      // История с сервера: lastId=0 забирает всё, что было
-      state.lastId = 0;
-      poll();
+      state.loading = true;
+      poll(0).then(function () { state.loading = false; });
     } else {
-      ensureThread().catch(function (err) {
-        addNotice(err.message || 'Чат недоступен.');
-      });
+      ensureThread()
+        .then(function () { return poll(0); })
+        .catch(function (err) {
+          addNotice(err.message || 'Чат недоступен.');
+        });
     }
+
     startPolling();
+    els.input.focus();
   }
 
   function close() {
     state.open = false;
     panel.hidden = true;
+    bubble.hidden = false;
   }
 
   // ------------------------------------------------------------------ события
@@ -268,6 +329,10 @@
     if (state.open) { close(); } else { open(); }
   });
   els.close.addEventListener('click', close);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && state.open) { close(); }
+  });
 
   els.form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -290,5 +355,30 @@
     els.input.style.height = Math.min(els.input.scrollHeight, 120) + 'px';
   });
 
+  // ------------------------------------------------------------------ старт
+
+  // Кеш настроек — чтобы цвет и заголовок были верными с первого кадра,
+  // а не после ответа сервера.
+  var cached = loadJson(KEY_CONFIG);
+  if (cached) { applyConfig(cached); }
+
+  refreshConfig();
   mount();
+
+  // Токен уже есть → узнать, не ответил ли оператор, пока посетитель
+  // ходил по другим страницам. Один запрос на загрузку страницы.
+  state.token = load(KEY_TOKEN);
+  if (state.token) {
+    var seenId = parseInt(load(KEY_SEEN) || '0', 10) || 0;
+    api('poll?token=' + encodeURIComponent(state.token) + '&after=' + seenId)
+      .then(function (res) {
+        if (!res || !res.ok) {
+          if (res && res.expired) { state.token = null; drop(KEY_TOKEN); }
+          return;
+        }
+        var count = (res.messages || []).filter(function (m) { return m.direction === 'out'; }).length;
+        if (count > 0) { showBadge(count); }
+      })
+      .catch(function () { /* молча */ });
+  }
 })();

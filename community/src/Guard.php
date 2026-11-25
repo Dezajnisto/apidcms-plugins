@@ -162,9 +162,75 @@ class Guard
         }
 
         if ((int) $channel['requires_join'] === 1 && !$this->isMember((int) $channel['id'])) {
+            $status = (string) ($this->membershipStatus((int) $channel['id']) ?? '');
+
+            if ($status === 'pending') {
+                return 'Заявка на вступление ждёт решения модератора.';
+            }
+
             return 'Чтобы писать, вступите в сообщество.';
         }
 
         return '';
+    }
+
+    /** Статус участия: active | pending | null (не участник). */
+    public function membershipStatus(int $channelId): ?string
+    {
+        $membership = $this->store->membership($channelId, $this->userId());
+
+        return $membership ? (string) ($membership['status'] ?? '') : null;
+    }
+
+    /** Как вступают в канал: open | approval | closed. */
+    public function joinPolicy(array $channel): string
+    {
+        $policy = (string) ($channel['join_policy'] ?? 'open');
+
+        return in_array($policy, ['open', 'approval', 'closed'], true) ? $policy : 'open';
+    }
+
+    /**
+     * Может ли текущий посетитель вступить в сообщество.
+     * @return array{allowed:bool,reason:string,mode:string} mode: join|apply|none
+     */
+    public function joinState(array $channel): array
+    {
+        $channelId = (int) $channel['id'];
+        $policy = $this->joinPolicy($channel);
+        $status = $this->membershipStatus($channelId);
+
+        if ($this->isAdmin() || $this->canModerate($channelId)) {
+            return ['allowed' => false, 'reason' => 'Вы модератор этого сообщества.', 'mode' => 'none'];
+        }
+
+        if ($status === 'active') {
+            return ['allowed' => true, 'reason' => '', 'mode' => 'leave'];
+        }
+
+        if ($status === 'pending') {
+            return ['allowed' => false, 'reason' => 'Заявка отправлена, ждёт решения модератора.', 'mode' => 'pending'];
+        }
+
+        if (!$this->isLoggedIn()) {
+            // на сайте без аккаунтов вступать некому — сообщества там не работают
+            return [
+                'allowed' => false,
+                'reason' => $this->store->hasAccounts()
+                    ? 'Чтобы вступить, войдите в аккаунт.'
+                    : 'На этом сайте нет регистрации, вступление недоступно.',
+                'mode' => 'none',
+            ];
+        }
+
+        if ($policy === 'closed') {
+            return ['allowed' => false, 'reason' => 'Вступить можно только по приглашению модератора.', 'mode' => 'none'];
+        }
+
+        if ($policy === 'approval') {
+            return ['allowed' => true, 'reason' => '', 'mode' => 'apply'];
+        }
+
+        return ['allowed' => true, 'reason' => '', 'mode' => 'join'];
     }
 }

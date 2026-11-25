@@ -552,6 +552,149 @@ class Store
         )->fetchAll() ?: [];
     }
 
+    // ---------------------------------------------------------------- участники
+
+    /**
+     * Участники канала.
+     *
+     * @param string $status active | pending | '' (все)
+     */
+    public function members(int $channelId, string $status = 'active', int $limit = 200): array
+    {
+        $author = $this->hasAccounts()
+            ? 'u.name, u.email, u.avatar'
+            : "'' AS name, '' AS email, '' AS avatar";
+        $join = $this->hasAccounts()
+            ? 'LEFT JOIN plugin_account_users u ON u.id = m.user_id'
+            : '';
+
+        $sql = "SELECT m.user_id, m.role, m.status, m.created_at, {$author}
+                  FROM plugin_community_members m
+                  {$join}
+                 WHERE m.channel_id = ?";
+        $params = [$channelId];
+
+        if ($status !== '') {
+            $sql .= " AND m.status = ?";
+            $params[] = $status;
+        }
+
+        $sql .= " ORDER BY CASE m.role WHEN 'moderator' THEN 0 ELSE 1 END, m.created_at ASC LIMIT ?";
+        $params[] = $limit;
+
+        return $this->db->query($sql, $params)->fetchAll() ?: [];
+    }
+
+    public function membership(int $channelId, int $userId): ?array
+    {
+        if ($userId <= 0) {
+            return null;
+        }
+
+        $row = $this->db->query(
+            "SELECT * FROM plugin_community_members WHERE channel_id = ? AND user_id = ?",
+            [$channelId, $userId]
+        )->fetch();
+
+        return $row ?: null;
+    }
+
+    /** Добавить участника или изменить его статус/роль. */
+    public function setMembership(int $channelId, int $userId, string $status = 'active', string $role = 'member'): void
+    {
+        if ($userId <= 0) {
+            return;
+        }
+
+        $this->db->query(
+            "INSERT INTO plugin_community_members (channel_id, user_id, role, status)
+             VALUES (?, ?, ?, ?)
+             ON CONFLICT (channel_id, user_id) DO UPDATE SET status = excluded.status",
+            [$channelId, $userId, $role, $status]
+        );
+
+        // роль меняем отдельно: при повторной заявке она не должна сбрасываться
+        if ($status === 'active' && $role !== 'member') {
+            $this->db->query(
+                "UPDATE plugin_community_members SET role = ? WHERE channel_id = ? AND user_id = ?",
+                [$role, $channelId, $userId]
+            );
+        }
+
+        $this->refreshMemberCounters($channelId);
+    }
+
+    public function removeMembership(int $channelId, int $userId): void
+    {
+        $this->db->query(
+            "DELETE FROM plugin_community_members WHERE channel_id = ? AND user_id = ?",
+            [$channelId, $userId]
+        );
+
+        $this->refreshMemberCounters($channelId);
+    }
+
+    public function setMemberRole(int $channelId, int $userId, string $role): void
+    {
+        $this->db->query(
+            "UPDATE plugin_community_members SET role = ? WHERE channel_id = ? AND user_id = ?",
+            [$role, $channelId, $userId]
+        );
+    }
+
+    /** Заявки канала (status = pending). */
+    public function applications(int $channelId, int $limit = 100): array
+    {
+        return $this->members($channelId, 'pending', $limit);
+    }
+
+    /** Заявки во все каналы — для админки. */
+    public function pendingApplications(int $limit = 100): array
+    {
+        $author = $this->hasAccounts() ? 'u.name, u.email' : "'' AS name, '' AS email";
+        $join = $this->hasAccounts()
+            ? 'LEFT JOIN plugin_account_users u ON u.id = m.user_id'
+            : '';
+
+        return $this->db->query(
+            "SELECT m.channel_id, m.user_id, m.created_at, {$author},
+                    c.slug AS channel_slug, c.title AS channel_title
+               FROM plugin_community_members m
+               JOIN plugin_community_channels c ON c.id = m.channel_id
+               {$join}
+              WHERE m.status = 'pending'
+              ORDER BY m.created_at ASC
+              LIMIT ?",
+            [$limit]
+        )->fetchAll() ?: [];
+    }
+
+    public function pendingApplicationsCount(): int
+    {
+        return (int) ($this->db->query(
+            "SELECT COUNT(*) AS c FROM plugin_community_members WHERE status = 'pending'"
+        )->fetch()['c'] ?? 0);
+    }
+
+    /** Сообщества: каналы режима community, включая скрытые — решает Guard. */
+    public function communities(): array
+    {
+        return $this->channels(self::MODE_COMMUNITY, true);
+    }
+
+    public function refreshMemberCounters(int $channelId): void
+    {
+        $count = (int) ($this->db->query(
+            "SELECT COUNT(*) AS c FROM plugin_community_members WHERE channel_id = ? AND status = 'active'",
+            [$channelId]
+        )->fetch()['c'] ?? 0);
+
+        $this->db->query(
+            "UPDATE plugin_community_channels SET count_members = ? WHERE id = ?",
+            [$count, $channelId]
+        );
+    }
+
     // ---------------------------------------------------------------- мелочи
 
     private function uniqueSlug(int $channelId, string $base): string

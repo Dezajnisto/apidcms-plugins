@@ -5,7 +5,7 @@
 {% block content %}
 <div class="wcc">
     <nav class="wcc-crumbs">
-        <a href="/{{ prefix }}">Форум</a> <span>/</span> <span>{{ channel.title }}</span>
+        <a href="/{{ prefix }}">{{ section_label|default('Форум') }}</a> <span>/</span> <span>{{ channel.title }}</span>
     </nav>
 
     <div class="wcc-head wcc-head--row">
@@ -47,7 +47,7 @@
                     </div>
                     <div class="wcc-topic__count">
                         <strong>{{ topic.count_posts }}</strong>
-                        <span>ответов</span>
+                        <span>{{ plural(topic.count_posts, 'ответ', 'ответа', 'ответов') }}</span>
                     </div>
                 </a>
             {% endfor %}

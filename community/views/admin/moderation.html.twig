@@ -12,6 +12,43 @@
         </div>
     {% endif %}
 
+    {% if applications is not empty %}
+        <div class="mb-6 bg-white rounded-lg border border-amber-300">
+            <div class="px-4 py-3 border-b border-amber-200 flex items-center justify-between">
+                <h2 class="font-semibold text-gray-900">Заявки в сообщества</h2>
+                <span class="text-sm text-gray-500">{{ applications_count }}</span>
+            </div>
+            <ul class="divide-y divide-gray-100">
+                {% for application in applications %}
+                    <li class="px-4 py-3 flex flex-wrap items-center gap-3 text-sm">
+                        <span class="font-medium text-gray-800">{{ application.name ?: ('Пользователь #' ~ application.user_id) }}</span>
+                        <span class="text-gray-500">→ {{ application.channel_title }}</span>
+                        <span class="text-xs text-gray-400">{{ application.created_at }}</span>
+
+                        <div class="flex items-center gap-2 ml-auto">
+                            {# Twig умеет только две переменные в for: ключ и значение #}
+                            {% for action, meta in {
+                                approve: ['Одобрить', 'bg-green-600 text-white border-green-600'],
+                                reject: ['Отклонить', 'bg-white text-red-600 border-red-300']
+                            } %}
+                                <form method="post" action="{{ admin_url('community/application') }}">
+                                    <input type="hidden" name="channel_id" value="{{ application.channel_id }}">
+                                    <input type="hidden" name="user_id" value="{{ application.user_id }}">
+                                    <button name="action" value="{{ action }}"
+                                            class="px-3 py-1.5 rounded-md text-sm border {{ meta[1] }}">
+                                        {{ meta[0] }}
+                                    </button>
+                                </form>
+                            {% endfor %}
+                            <a href="/community/{{ application.channel_slug }}" target="_blank"
+                               class="text-blue-600 hover:underline">сообщество</a>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    {% endif %}
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <div class="lg:col-span-2">
@@ -90,10 +127,44 @@
                                 </div>
                                 <div class="text-xs text-gray-500">
                                     {{ channel.count_topics }} тем · {{ channel.count_posts }} сообщений
+                                    {% if channel.mode == 'community' %}
+                                        · {{ channel.count_members }} участников
+                                        {% if channel.is_private %}· закрытое{% endif %}
+                                    {% endif %}
                                 </div>
+
+                                {% if channel.mode == 'community' %}
+                                    <form method="post" action="{{ admin_url('community/channel') }}"
+                                          class="mt-2 flex flex-wrap items-center gap-2">
+                                        <input type="hidden" name="channel_id" value="{{ channel.id }}">
+                                        <select name="join_policy"
+                                                class="px-2 py-1 border border-gray-300 rounded text-xs">
+                                            {% for value, label in {
+                                                open: 'вступают сразу',
+                                                approval: 'по заявке',
+                                                closed: 'по приглашению'
+                                            } %}
+                                                <option value="{{ value }}"
+                                                    {% if channel.join_policy == value %}selected{% endif %}>{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                        <label class="flex items-center gap-1 text-xs text-gray-600">
+                                            <input type="checkbox" name="is_private" value="1"
+                                                {% if channel.is_private %}checked{% endif %}>
+                                            закрытое
+                                        </label>
+                                        <button class="text-xs text-blue-600 hover:underline">сохранить</button>
+                                    </form>
+                                {% endif %}
                             </div>
-                            <a href="{{ admin_url('table/plugin_community_channels/edit/' ~ channel.id) }}"
-                               class="text-xs text-blue-600 hover:underline shrink-0">править</a>
+                            <div class="flex items-center gap-2 shrink-0">
+                                {% if channel.mode == 'community' %}
+                                    <a href="{{ admin_url('table/plugin_community_members') }}"
+                                       class="text-xs text-gray-600 hover:underline" title="Участники и модераторы">участники</a>
+                                {% endif %}
+                                <a href="{{ admin_url('table/plugin_community_channels/edit/' ~ channel.id) }}"
+                                   class="text-xs text-blue-600 hover:underline">править</a>
+                            </div>
                         </li>
                     {% else %}
                         <li class="px-4 py-6 text-sm text-gray-500">Разделов нет.</li>

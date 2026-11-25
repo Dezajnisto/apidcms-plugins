@@ -1,0 +1,46 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Сообщества{% if title_suffix %} — {{ title_suffix }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="wcc">
+    <div class="wcc-head">
+        <h1 class="wcc-title">Сообщества</h1>
+        <p class="wcc-sub">Закрытые и открытые разделы со своими участниками. Писать могут участники.</p>
+    </div>
+
+    {% if flash %}
+        <div class="wcc-flash wcc-flash--{{ flash.type }}">{{ flash.text }}</div>
+    {% endif %}
+
+    {% if communities is empty %}
+        <div class="wcc-empty">Сообществ пока нет.</div>
+    {% else %}
+        <div class="wcc-channels">
+            {% for item in communities %}
+                <a class="wcc-channel" href="/community/{{ item.slug }}">
+                    <div class="wcc-channel__main">
+                        <div class="wcc-channel__title">
+                            {{ item.title }}
+                            {% if item.is_private %}<span class="wcc-badge">закрытое</span>{% endif %}
+                            {% if item.join.mode == 'pending' %}<span class="wcc-badge wcc-badge--pending">заявка на рассмотрении</span>{% endif %}
+                            {% if item.join.mode == 'leave' %}<span class="wcc-badge wcc-badge--sticky">вы участник</span>{% endif %}
+                        </div>
+                        {% if item.description and not item.locked %}
+                            <div class="wcc-channel__desc">{{ item.description }}</div>
+                        {% endif %}
+                    </div>
+                    <div class="wcc-channel__meta">
+                        <span>{{ item.count_members }} {{ plural(item.count_members, 'участник', 'участника', 'участников') }}</span>
+                        <span>{{ item.count_topics }} {{ plural(item.count_topics, 'тема', 'темы', 'тем') }}</span>
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <p class="wcc-hint">
+        Нужен обычный форум без участников? Он <a href="/{{ forum_prefix }}">здесь</a>.
+    </p>
+</div>
+{% endblock %}

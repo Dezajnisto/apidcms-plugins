@@ -10,7 +10,7 @@
  * Хуки:
  *   db.migrate            — таблицы + каналы по умолчанию
  *   twig.init             — шаблоны плагина в теме сайта, функции
- *   front.router.before   — /forum/..., /community/reply, /community/upload
+ *   front.router.before   — /forum/..., /community/..., /community/reply, /community/upload
  *   front.render          — блок комментариев под текстом страницы
  *   front.output          — стили и скрипт
  *   admin.routes          — очередь модерации
@@ -30,6 +30,29 @@ use Twig\TwigFunction;
 
 $pm = PluginManager::getInstance();
 $pluginDir = __DIR__;
+
+/**
+ * Есть ли колонка из «ALTER TABLE x ADD COLUMN y ...».
+ * Нужно, чтобы повторный запуск миграции не писал ошибку в лог.
+ */
+function self_column_exists($db, string $statement): bool
+{
+    if (!preg_match('/ALTER\s+TABLE\s+["\'`]?([a-z0-9_]+)["\'`]?\s+ADD\s+COLUMN\s+["\'`]?([a-z0-9_]+)/i', $statement, $m)) {
+        return false;
+    }
+
+    try {
+        foreach ($db->query("PRAGMA table_info(\"{$m[1]}\")")->fetchAll() as $column) {
+            if (strcasecmp((string) ($column['name'] ?? ''), $m[2]) === 0) {
+                return true;
+            }
+        }
+    } catch (\Throwable $e) {
+        return false;
+    }
+
+    return false;
+}
 
 // === Автозагрузка классов плагина ===
 
@@ -56,17 +79,28 @@ spl_autoload_register(function ($class) use ($pluginDir) {
 // === Миграции ===
 
 $pm->addAction('db.migrate', function ($db) use ($pluginDir) {
-    $migration = $pluginDir . '/migrations/001_init.sql';
-    if (!is_file($migration)) {
-        return;
-    }
+    // Все миграции по порядку номеров. Повторный запуск безопасен: в 001 стоят
+    // IF NOT EXISTS, а 002 добавляет колонки — их отсутствие проверяем сами,
+    // потому что SQLite не умеет ADD COLUMN IF NOT EXISTS.
+    $files = glob($pluginDir . '/migrations/*.sql') ?: [];
+    sort($files);
 
-    $sql = (string) file_get_contents($migration);
-    foreach (array_filter(array_map('trim', explode(';', $sql))) as $statement) {
-        try {
-            $db->exec($statement);
-        } catch (\Throwable $e) {
-            error_log('community: миграция не применилась — ' . $e->getMessage());
+    foreach ($files as $migration) {
+        $sql = (string) file_get_contents($migration);
+        foreach (array_filter(array_map('trim', explode(';', $sql))) as $statement) {
+            // ALTER TABLE ... ADD COLUMN повторно падает — это нормально и значит,
+            // что колонка уже есть. Такой шум в лог не пишем.
+            if (stripos($statement, 'ADD COLUMN') !== false && self_column_exists($db, $statement)) {
+                continue;
+            }
+
+            try {
+                $db->exec($statement);
+            } catch (\Throwable $e) {
+                if (stripos($statement, 'ADD COLUMN') === false) {
+                    error_log('community: миграция ' . basename($migration) . ' — ' . $e->getMessage());
+                }
+            }
         }
     }
 
@@ -101,6 +135,22 @@ $pm->addAction('twig.init', function ($fc, $twig) use ($pluginDir) {
         return Csrf::field();
     }));
 
+    // Склонение числительных: 1 участник, 2 участника, 5 участников.
+    // Без него в интерфейсе появляется «1 участников» и «2 тем».
+    $twig->addFunction(new TwigFunction('plural', function (int $n, string $one, string $few, string $many) {
+        $n = abs($n) % 100;
+        if ($n >= 11 && $n <= 14) {
+            return $many;
+        }
+        switch ($n % 10) {
+            case 1:  return $one;
+            case 2:
+            case 3:
+            case 4:  return $few;
+            default: return $many;
+        }
+    }));
+
     // Ручная вставка блока комментариев в шаблон темы, если контент страницы
     // печатается не как page.content (запасной путь для нестандартных тем).
     $twig->addFunction(new TwigFunction('community_comments', function ($page) {
@@ -120,6 +170,12 @@ $pm->addAction('front.router.before', function ($path, $fc) {
     // Обработчик, который уже отдал ответ, обязан завершить запрос: иначе
     // FrontController дорисует свою 404 поверх и перетрёт статус.
     if (Endpoint::handle($path)) {
+        exit;
+    }
+
+    // Сообщества раньше форума: у них свои адреса (/community/<slug>),
+    // а темы внутри сообщества обрабатывает уже Forum.
+    if ((new \Plugins\Community\Communities())->handle($path)) {
         exit;
     }
 
@@ -221,6 +277,8 @@ $pm->addFilter('front.output', function ($html) use ($pluginDir) {
 $pm->addAction('admin.routes', function ($app) {
     $app->addRoute('/community', 'Plugins\\Community\\AdminCommunityController', 'index');
     $app->addRoute('/community/moderate', 'Plugins\\Community\\AdminCommunityController', 'moderate');
+    $app->addRoute('/community/application', 'Plugins\\Community\\AdminCommunityController', 'application');
+    $app->addRoute('/community/channel', 'Plugins\\Community\\AdminCommunityController', 'channel');
 }, 10, 'community');
 
 $pm->addFilter('admin.menu', function ($items) {

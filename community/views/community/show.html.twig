@@ -1,0 +1,177 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ channel.title }}{% if title_suffix %} — {{ title_suffix }}{% endif %}{% endblock %}
+
+{% block content %}
+<div class="wcc">
+    <nav class="wcc-crumbs">
+        <a href="/community">Сообщества</a> <span>/</span> <span>{{ channel.title }}</span>
+    </nav>
+
+    <div class="wcc-head wcc-head--row">
+        <div>
+            <h1 class="wcc-title">
+                {{ channel.title }}
+                {% if channel.is_private %}<span class="wcc-badge">закрытое</span>{% endif %}
+            </h1>
+            {% if channel.description %}
+                <p class="wcc-sub">{{ channel.description }}</p>
+            {% endif %}
+            <p class="wcc-community__stats">
+                {{ channel.count_members }} {{ plural(channel.count_members, 'участник', 'участника', 'участников') }}
+                · {{ channel.count_topics }} {{ plural(channel.count_topics, 'тема', 'темы', 'тем') }}
+                · {{ channel.count_posts }} {{ plural(channel.count_posts, 'сообщение', 'сообщения', 'сообщений') }}
+            </p>
+        </div>
+
+        <div class="wcc-community__actions">
+            {% if join.mode == 'join' or join.mode == 'apply' %}
+                <form method="post" action="/community/{{ channel.slug }}/join">
+                    {{ csrf|raw }}
+                    <button class="wcc-btn" type="submit">
+                        {{ join.mode == 'apply' ? 'Подать заявку' : 'Вступить' }}
+                    </button>
+                </form>
+            {% elseif join.mode == 'leave' %}
+                <form method="post" action="/community/{{ channel.slug }}/leave">
+                    {{ csrf|raw }}
+                    <button class="wcc-btn wcc-btn--ghost" type="submit"
+                            onclick="return confirm('Выйти из сообщества?')">Выйти</button>
+                </form>
+            {% elseif join.mode == 'pending' %}
+                <span class="wcc-badge wcc-badge--pending">заявка на рассмотрении</span>
+            {% endif %}
+
+            {% if can_post %}
+                <a class="wcc-btn wcc-btn--ghost" href="/community/{{ channel.slug }}/new">Новая тема</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if flash %}
+        <div class="wcc-flash wcc-flash--{{ flash.type }}">{{ flash.text }}</div>
+    {% endif %}
+
+    {% if locked %}
+        <div class="wcc-note">
+            Это закрытое сообщество: обсуждения и участники видны только тем, кто вступил.
+            {% if join_policy == 'closed' %}Вступление — по приглашению модератора.{% endif %}
+        </div>
+    {% endif %}
+
+    {# почему нельзя вступить/писать: вход, заявка на рассмотрении, приглашение #}
+    {% if join.reason and join.mode != 'leave' %}
+        <div class="wcc-note">{{ join.reason }}</div>
+    {% elseif not can_post and deny and join.mode not in ['join', 'apply'] %}
+        {# если кнопка вступления уже объясняет ситуацию, второй плашки не надо #}
+        <div class="wcc-note">{{ deny }}</div>
+    {% endif %}
+
+    {# --- заявки: видит только модератор канала ------------------------- #}
+    {% if can_moderate and applications %}
+        <section class="wcc-applications">
+            <h2 class="wcc-applications__title">Заявки на вступление <span class="wcc-comments__count">{{ applications|length }}</span></h2>
+            <ul class="wcc-applications__list">
+                {% for applicant in applications %}
+                    <li class="wcc-applications__item">
+                        <span class="wcc-applications__name">{{ applicant.name ?: ('Пользователь #' ~ applicant.user_id) }}</span>
+                        <span class="wcc-applications__date">{{ applicant.created_at|date('d.m.Y H:i') }}</span>
+                        <form method="post" action="/community/{{ channel.slug }}/members" class="wcc-inline">
+                            {{ csrf|raw }}
+                            <input type="hidden" name="user_id" value="{{ applicant.user_id }}">
+                            <button class="wcc-link" name="action" value="approve">Одобрить</button>
+                            <button class="wcc-link wcc-link--danger" name="action" value="reject">Отклонить</button>
+                        </form>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    <div class="wcc-community">
+        <div class="wcc-community__feed">
+            <h2 class="wcc-community__heading">Обсуждения</h2>
+
+            {% if topics is empty %}
+                <div class="wcc-empty">
+                    {% if locked %}
+                        Обсуждения видны участникам сообщества.
+                    {% else %}
+                        Пока тихо.
+                        {% if can_post %}Начните первое обсуждение — оно появится сразу.{% endif %}
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="wcc-topics">
+                    {% for topic in topics %}
+                        <a class="wcc-topic" href="/community/{{ channel.slug }}/{{ topic.slug }}">
+                            <div class="wcc-topic__main">
+                                <div class="wcc-topic__title">
+                                    {% if topic.is_sticky %}<span class="wcc-badge wcc-badge--sticky">закреплено</span>{% endif %}
+                                    {% if topic.is_locked %}<span class="wcc-badge">закрыто</span>{% endif %}
+                                    {{ topic.subject }}
+                                </div>
+                                <div class="wcc-topic__by">
+                                    {{ topic.author_name ?: 'Автор удалён' }}
+                                    {% if topic.last_post_at %}· {{ topic.last_post_at|date('d.m.Y H:i') }}{% endif %}
+                                </div>
+                            </div>
+                            <div class="wcc-topic__count">
+                                <strong>{{ topic.count_posts }}</strong>
+                                <span>{{ plural(topic.count_posts, 'ответ', 'ответа', 'ответов') }}</span>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+
+                {% if pages > 1 %}
+                    <div class="wcc-pager">
+                        {% for p in 1..pages %}
+                            {% if p == page %}
+                                <span class="wcc-pager__item wcc-pager__item--active">{{ p }}</span>
+                            {% else %}
+                                <a class="wcc-pager__item" href="/community/{{ channel.slug }}?page={{ p }}">{{ p }}</a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+
+        <aside class="wcc-community__side">
+            <h2 class="wcc-community__heading">Участники</h2>
+            {% if locked %}
+                <p class="wcc-hint">Список участников виден только участникам.</p>
+            {% endif %}
+
+            {% if locked %}
+                {# у витрины подсказка уже выше — второй текст не нужен #}
+            {% elseif members is empty %}
+                <p class="wcc-hint">Пока никого.</p>
+            {% else %}
+                <ul class="wcc-members">
+                    {% for member in members %}
+                        <li class="wcc-members__item">
+                            <span class="wcc-members__avatar" aria-hidden="true">{{ (member.name ?: '?')|slice(0, 1)|upper }}</span>
+                            <span class="wcc-members__name">{{ member.name ?: ('Пользователь #' ~ member.user_id) }}</span>
+                            {% if member.role == 'moderator' %}<span class="wcc-badge">модератор</span>{% endif %}
+
+                            {% if can_moderate and member.role != 'moderator' %}
+                                <form method="post" action="/community/{{ channel.slug }}/members" class="wcc-inline">
+                                    {{ csrf|raw }}
+                                    <input type="hidden" name="user_id" value="{{ member.user_id }}">
+                                    <button class="wcc-link" name="action" value="promote"
+                                            title="Дать права модератора">↑</button>
+                                    <button class="wcc-link wcc-link--danger" name="action" value="remove"
+                                            title="Убрать из сообщества"
+                                            onclick="return confirm('Убрать участника?')">×</button>
+                                </form>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        </aside>
+    </div>
+</div>
+{% endblock %}

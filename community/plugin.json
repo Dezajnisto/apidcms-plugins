@@ -1,6 +1,6 @@
 {
   "name": "community",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Форум, комментарии к страницам и сообщества на одном наборе таблиц",
   "enabled": false,
   "dependencies": [],
@@ -67,6 +67,18 @@
       "value": true,
       "label": "Форум читают все",
       "description": "Выключите, чтобы форум был виден только вошедшим"
+    },
+    {
+      "key": "community_default_policy",
+      "type": "select",
+      "value": "approval",
+      "label": "Как вступают в новые сообщества",
+      "description": "Для уже созданных сообществ политика задаётся в самом разделе (поле join_policy)",
+      "options": {
+        "open": "Сразу, без заявки",
+        "approval": "По заявке, одобряет модератор",
+        "closed": "Только по приглашению"
+      }
     },
     {
       "key": "posts_per_10min",

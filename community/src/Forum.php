@@ -18,6 +18,9 @@ class Forum
     private Settings $settings;
     private Guard $guard;
 
+    /** Префикс текущего запроса: форум или сообщества. */
+    private ?string $activePrefix = null;
+
     public function __construct(?Store $store = null)
     {
         $this->store = $store ?? new Store();
@@ -25,28 +28,62 @@ class Forum
         $this->guard = new Guard($this->store);
     }
 
+    /**
+     * Префикс для ссылок. Внутри сообщества ссылки должны вести в /community,
+     * а не в /forum: иначе из сообщества выкидывает в другой раздел.
+     */
     public function prefix(): string
     {
-        return $this->settings->forumPrefix();
+        return $this->activePrefix ?? $this->settings->forumPrefix();
+    }
+
+    /** Подпись раздела для хлебных крошек. */
+    private function sectionLabel(): string
+    {
+        return $this->prefix() === Communities::PREFIX ? 'Сообщества' : 'Форум';
+    }
+
+    /**
+     * Префикс, под которым пришёл запрос: форум или сообщества.
+     *
+     * Темы сообщества живут по тем же правилам, что и темы форума, поэтому
+     * второй комплект страниц не нужен — достаточно знать, откуда пришли.
+     */
+    private function resolvePrefix(string $path): ?string
+    {
+        $forumPrefix = $this->prefix();
+
+        foreach ([$forumPrefix, Communities::PREFIX] as $prefix) {
+            if ($path === $prefix || strpos($path, $prefix . '/') === 0) {
+                return $prefix;
+            }
+        }
+
+        return null;
     }
 
     /** @return bool обработан ли запрос */
     public function handle(string $path): bool
     {
         $path = trim($path, '/');
-        $prefix = $this->prefix();
+        $prefix = $this->resolvePrefix($path);
 
-        if ($path !== $prefix && strpos($path, $prefix . '/') !== 0) {
+        if ($prefix === null) {
             return false;
         }
+
+        $this->activePrefix = $prefix;
 
         $rest = trim(substr($path, strlen($prefix)), '/');
         $parts = $rest === '' ? [] : explode('/', $rest);
 
         $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
 
-        // /forum
+        // /forum и /community без слага
         if ($parts === []) {
+            if ($prefix === Communities::PREFIX) {
+                return (new Communities($this->store))->handle($prefix);
+            }
             $this->index();
             return true;
         }
@@ -64,8 +101,12 @@ class Forum
             return true;
         }
 
-        // /forum/<channel>
+        // /forum/<channel> и /community/<slug>
         if (count($parts) === 1) {
+            if ((string) $channel['mode'] === Store::MODE_COMMUNITY) {
+                // страницу сообщества рисует Communities: у неё участники и заявки
+                return (new Communities($this->store))->handle($prefix . '/' . $channelSlug);
+            }
             $this->channelPage($channel);
             return true;
         }
@@ -120,7 +161,9 @@ class Forum
         Render::page('@community/forum/index.html.twig', [
             'title' => 'Форум',
             'channels' => $channels,
+            'has_communities' => $this->store->communities() !== [],
             'prefix' => $this->prefix(),
+            'section_label' => $this->sectionLabel(),
             'user' => $this->guard->user(),
             'flash' => Flash::take(),
         ]);
@@ -140,6 +183,7 @@ class Forum
             'page' => $page,
             'pages' => max(1, (int) ceil($result['total'] / self::TOPICS_PER_PAGE)),
             'prefix' => $this->prefix(),
+            'section_label' => $this->sectionLabel(),
             'can_post' => $deny === '',
             'deny' => $deny,
             'user' => $this->guard->user(),
@@ -159,6 +203,7 @@ class Forum
             'title' => 'Новая тема в «' . $channel['title'] . '»',
             'channel' => $channel,
             'prefix' => $this->prefix(),
+            'section_label' => $this->sectionLabel(),
             'csrf' => Csrf::field(),
             'flash' => Flash::take(),
             'uploads' => $this->settings->bool('uploads_enabled', true),
@@ -202,6 +247,7 @@ class Forum
             'page' => $page,
             'pages' => max(1, (int) ceil($result['total'] / self::POSTS_PER_PAGE)),
             'prefix' => $this->prefix(),
+            'section_label' => $this->sectionLabel(),
             'can_post' => $deny === '',
             'can_moderate' => $this->guard->canModerate((int) $channel['id']),
             'deny' => $deny,

@@ -6,7 +6,7 @@
 {% block content %}
 <div class="wcc">
     <nav class="wcc-crumbs">
-        <a href="/{{ prefix }}">Форум</a> <span>/</span>
+        <a href="/{{ prefix }}">{{ section_label|default('Форум') }}</a> <span>/</span>
         <a href="/{{ prefix }}/{{ channel.slug }}">{{ channel.title }}</a> <span>/</span>
         <span>{{ topic.subject }}</span>
     </nav>

@@ -26,8 +26,8 @@
                         {% endif %}
                     </div>
                     <div class="wcc-channel__meta">
-                        <span>{{ channel.count_topics }} тем</span>
-                        <span>{{ channel.count_posts }} сообщений</span>
+                        <span>{{ channel.count_topics }} {{ plural(channel.count_topics, 'тема', 'темы', 'тем') }}</span>
+                        <span>{{ channel.count_posts }} {{ plural(channel.count_posts, 'сообщение', 'сообщения', 'сообщений') }}</span>
                     </div>
                 </a>
             {% endfor %}
@@ -36,6 +36,10 @@
 
     {% if user is null %}
         <p class="wcc-hint">Чтобы открыть тему или ответить, <a href="/login">войдите</a>.</p>
+    {% endif %}
+
+    {% if has_communities %}
+        <p class="wcc-hint">Есть закрытые сообщества со своими участниками — <a href="/community">список сообществ</a>.</p>
     {% endif %}
 </div>
 {% endblock %}

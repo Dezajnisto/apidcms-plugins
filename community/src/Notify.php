@@ -93,6 +93,59 @@ class Notify
         }
     }
 
+    /**
+     * Письмо модераторам сообщества о новой заявке.
+     *
+     * Заявка видна и на странице сообщества, но модератор туда не заходит
+     * каждый день — без письма она висит незамеченной неделями.
+     */
+    public function aboutApplication(array $channel, int $applicantId): void
+    {
+        if (!$this->store->settings()->bool('notify_email', true)) {
+            return;
+        }
+
+        $sender = $this->sender();
+        if ($sender === null) {
+            return;
+        }
+
+        $moderators = $this->store->members((int) $channel['id'], 'active', 50);
+        $applicant = $this->store->db()->query(
+            "SELECT name, email FROM plugin_account_users WHERE id = ?",
+            [$applicantId]
+        )->fetch();
+
+        $who = $applicant && trim((string) $applicant['name']) !== ''
+            ? (string) $applicant['name']
+            : 'Пользователь #' . $applicantId;
+
+        $link = (new Links($this->store))->host() . '/community/' . $channel['slug'];
+        $subject = 'Заявка в сообщество «' . mb_substr((string) $channel['title'], 0, 60) . '»';
+
+        foreach ($moderators as $moderator) {
+            if ((string) ($moderator['role'] ?? '') !== 'moderator') {
+                continue;
+            }
+
+            $email = trim((string) ($moderator['email'] ?? ''));
+            if ($email === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                continue;
+            }
+
+            $body = '<p>Здравствуйте.</p>'
+                . '<p><strong>' . htmlspecialchars($who) . '</strong> просит вступить в сообщество '
+                . '«' . htmlspecialchars((string) $channel['title']) . '».</p>'
+                . '<p><a href="' . htmlspecialchars($link) . '">Открыть сообщество</a> — заявка ждёт решения на странице.</p>';
+
+            try {
+                $sender->send($email, $subject, $body, true);
+            } catch (\Throwable $e) {
+                error_log('community: письмо о заявке не ушло на ' . $email . ' — ' . $e->getMessage());
+            }
+        }
+    }
+
     /** Ссылка на обсуждение — общая логика в Links. */
     private function linkToTopic(array $topic): string
     {

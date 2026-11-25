@@ -1,0 +1,4 @@
+# Сертификаты не конвертируем в CRLF: curl/openssl на файле с CRLF
+# падает с «error setting certificate file».
+*.pem -text
+*.crt -text

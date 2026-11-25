@@ -29,7 +29,19 @@ class Render
     /** Полная страница: заголовок, меню, подвал — всё из темы сайта. */
     public static function page(string $template, array $data = []): void
     {
-        echo self::html($template, self::withBase($data));
+        $html = self::html($template, self::withBase($data));
+
+        // Своя страница рендерится мимо FrontController::render, поэтому
+        // фильтр front.output сам не сработает — а именно на нём висят стили
+        // сообщества и виджет чата. Без этого форум отдавался без CSS.
+        try {
+            $pm = \Core\PluginManager::getInstance();
+            $html = $pm->applyFilters('front.output', $html, self::$fc);
+        } catch (\Throwable $e) {
+            // плагин работает и без остальных подписчиков
+        }
+
+        echo $html;
     }
 
     /** Кусок разметки — например, блок комментариев под текстом статьи. */
@@ -65,9 +77,16 @@ class Render
             $locale = '';
         }
 
+        // Название сайта в <title>. У части сайтов site_title так и остался
+        // дефолтным «Мой сайт» (тема печатает свой заголовок), и приписывать
+        // его к названию страницы нельзя — получается «Форум — Мой сайт».
+        $siteTitle = trim((string) ($fc->getSetting('site_title') ?: ''));
+        $titleSuffix = ($siteTitle === '' || $siteTitle === 'Мой сайт') ? '' : $siteTitle;
+
         $base = [
             '_GET' => $_GET,
             'navigation' => $fc->getNavigation(),
+            'title_suffix' => $titleSuffix,
             'site_title' => $fc->getSetting('site_title') ?: 'Мой сайт',
             'site_description' => $fc->getSetting('site_description') ?: '',
             'custom_css' => $fc->getSetting('custom_css') ?: '',

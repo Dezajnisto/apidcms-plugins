@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Форум — {{ site_title }}{% endblock %}
+{% block title %}Форум{% if title_suffix %} — {{ title_suffix }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="wcc">

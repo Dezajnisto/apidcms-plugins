@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Новая тема — {{ channel.title }}{% endblock %}
+{% block title %}Новая тема — {{ channel.title }}{% if title_suffix %} — {{ title_suffix }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="wcc wcc--narrow">

@@ -1,7 +1,7 @@
 {% extends 'base.html.twig' %}
 {% import '@community/partials/post.html.twig' as ui %}
 
-{% block title %}{{ topic.subject }} — {{ channel.title }}{% endblock %}
+{% block title %}{{ topic.subject }} — {{ channel.title }}{% if title_suffix %} — {{ title_suffix }}{% endif %}{% endblock %}
 
 {% block content %}
 <div class="wcc">

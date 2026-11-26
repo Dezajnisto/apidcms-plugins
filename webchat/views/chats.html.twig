@@ -16,6 +16,15 @@
     </div>
     {% endif %}
 
+    {% if channel_ready and shared_bot %}
+    <div class="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+        <p class="font-semibold mb-1">Бот общий с другими сайтами</p>
+        <p>В одном чате лежат обращения нескольких сайтов, поэтому у каждого свой
+           номер: <code>#{{ site_tag }}-12</code>. Ответ отправляется цитатой на сообщение
+           бота или текстом, который начинается с этого номера.</p>
+    </div>
+    {% endif %}
+
     <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div class="flex items-center gap-2">
             {% for key, label in {'open': 'Открытые', 'closed': 'Закрытые', 'all': 'Все'} %}

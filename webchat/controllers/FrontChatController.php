@@ -217,6 +217,20 @@ class FrontChatController
         }
 
         try {
+            // Сырой payload по требованию: без него невозможно понять, почему
+            // ответ оператора привязался не туда — структура Update у MAX
+            // меняется, а гадать по документации уже один раз стоило ошибки.
+            if ((string) $chat->settings()->get('debug', '') === '1') {
+                $dir = dirname(__DIR__, 3) . '/storage/logs';
+                if (is_dir($dir) && is_writable($dir)) {
+                    @file_put_contents(
+                        $dir . '/webchat-hook.log',
+                        date('c') . ' ' . $channelName . ' ' . (string) $raw . "\n",
+                        FILE_APPEND
+                    );
+                }
+            }
+
             $chat->handleUpdate($update, $channelName);
         } catch (\Throwable $e) {
             // Всегда отвечаем 200: иначе мессенджер повторяет событие 10 раз,

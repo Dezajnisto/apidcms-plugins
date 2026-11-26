@@ -19,6 +19,14 @@ class Chat
     private Settings $settings;
     private ?ChannelInterface $channel = null;
 
+    /**
+     * Почему resolveThread() ничего не нашёл:
+     *   empty  — привязать не к чему (в чате ещё нет обращений);
+     *   foreign — сообщение относится к другому сайту на том же боте.
+     * Нужен, чтобы не спамить подсказками в общий чат.
+     */
+    private string $resolveReason = 'empty';
+
     public function __construct(?\Core\Database $db = null, ?Settings $settings = null)
     {
         if ($db === null) {
@@ -48,9 +56,57 @@ class Chat
         $api = (string) $this->settings->get('api_base', '');
         $this->channel = $channel === 'telegram'
             ? new TelegramChannel((string) $this->settings->get('tg_token'), (string) $this->settings->get('tg_chat_id'), $api)
-            : new MaxChannel((string) $this->settings->get('max_token'), (string) $this->settings->get('max_chat_id'), $api);
+            : new MaxChannel(
+                (string) $this->settings->get('max_token'),
+                (string) $this->settings->get('max_chat_id'),
+                $api,
+                (string) $this->settings->get('max_read_chat_id', '')
+            );
 
         return $this->channel;
+    }
+
+    /**
+     * Бот обслуживает несколько сайтов? Результат кешируем на 10 минут:
+     * проверка — это запрос к Bot API, а нужно это на каждом обращении.
+     */
+    public function sharedBot(): bool
+    {
+        $cached = (string) $this->settings->get('shared_bot', '');
+        $at = (int) $this->settings->get('shared_bot_at', 0);
+        if ($cached !== '' && $at > 0 && (time() - $at) < 600) {
+            return $cached === '1';
+        }
+
+        $channel = $this->channel();
+        $shared = $channel !== null && $channel->isShared();
+
+        $this->settings->save('shared_bot', $shared ? '1' : '0');
+        $this->settings->save('shared_bot_at', (string) time());
+
+        return $shared;
+    }
+
+    /**
+     * Метка сайта в номере обращения: daristihi.ru → daristihi.
+     *
+     * В общем боте номера сайтов совпадают (у каждого свой #1), поэтому в
+     * общем режиме в мессенджер уходит «#daristihi-3», а не «#3».
+     */
+    public static function siteTag(string $host): string
+    {
+        $host = strtolower(trim($host));
+        $host = (string) preg_replace('#^www\.#', '', $host);
+        $label = explode('.', $host)[0] ?? '';
+        $label = (string) preg_replace('/[^a-z0-9-]/', '', $label);
+
+        return $label !== '' ? $label : 'site';
+    }
+
+    /** Метка ЭТОГО сайта (по домену, на который пришёл запрос). */
+    private function ownTag(): string
+    {
+        return self::siteTag((string) ($_SERVER['HTTP_HOST'] ?? ''));
     }
 
     public function channelReady(): bool
@@ -282,7 +338,6 @@ class Chat
 
         $text = $this->formatForOperator($thread, $message);
         $result = $channel->send($thread, $text);
-
         if ($result['mid'] !== '') {
             $this->db->query(
                 "UPDATE plugin_webchat_messages SET external_mid = ? WHERE id = ?",
@@ -304,7 +359,13 @@ class Chat
         $name = trim((string) ($thread['visitor_name'] ?? ''));
         $page = (string) ($thread['page_url'] ?? '');
 
-        $header = '#' . $id . ' · ' . ($name !== '' ? $name : 'Посетитель');
+        // Общий бот на несколько сайтов: без метки номер «#3» не говорит,
+        // чьё это обращение — на каждом сайте свой третий.
+        $number = $this->sharedBot()
+            ? self::siteTag((string) ($thread['site'] ?? '')) . '-' . $id
+            : (string) $id;
+
+        $header = '#' . $number . ' · ' . ($name !== '' ? $name : 'Посетитель');
         if ($page !== '') {
             $header .= "\n" . mb_substr($page, 0, 200);
         }
@@ -339,6 +400,14 @@ class Chat
             return ['ok' => false, 'thread_id' => 0, 'error' => 'не сообщение оператора'];
         }
 
+        // В диалоге с ботом chat_id ≠ user_id, а для чтения истории нужен
+        // именно chat_id. Узнаём его из любого события и запоминаем.
+        $chatId = (string) ($parsed['chat_id'] ?? '');
+        if ($channelName === 'max' && $chatId !== '' && (string) $this->settings->get('max_read_chat_id', '') !== $chatId) {
+            $this->settings->save('max_read_chat_id', $chatId);
+            $this->channel = null; // пересоздать канал с новым chat_id
+        }
+
         // MAX: оператор написал боту в личку — запоминаем, куда слать
         // обращения. Иначе владельцу пришлось бы искать свой user_id руками.
         if ($channelName === 'max'
@@ -350,14 +419,25 @@ class Chat
             $this->settings->save('max_chat_id', (string) $parsed['sender_id']);
         }
 
-        $thread = $this->resolveThread($parsed);
+        $shared = $this->sharedBot();
+        $thread = $this->resolveThread($parsed, $shared);
         if (!$thread) {
+            // В общем режиме сообщение часто адресовано другому сайту: его
+            // разберёт тот сайт, у которого нашёлся mid. Подсказку в чат
+            // тогда НЕ пишем — иначе на одно действие оператора прилетит по
+            // подсказке от каждого сайта.
+            if ($shared && $this->resolveReason !== 'empty') {
+                return ['ok' => false, 'thread_id' => 0, 'error' => 'обращение другого сайта'];
+            }
+
             // Молча терять сообщение оператора нельзя: он думает, что ответил.
             // Подсказываем, как привязать ответ, прямо в мессенджер.
             $channel->send(
                 ['id' => 0, 'external_ref' => ''],
-                'Не понял, к какому обращению это относится — обращений ещё нет. '
-                . 'Ответьте на сообщение бота (цитатой) или начните текст с номера: #12 ваш ответ.'
+                $shared
+                    ? 'Не понял, к какому обращению это относится. Ответьте на сообщение бота цитатой или начните с номера: #' . $this->ownTag() . '-12 ваш ответ'
+                    : 'Не понял, к какому обращению это относится — обращений ещё нет. '
+                        . 'Ответьте на сообщение бота (цитатой) или начните текст с номера: #12 ваш ответ.'
             );
             return ['ok' => false, 'thread_id' => 0, 'error' => 'обращение не найдено'];
         }
@@ -373,10 +453,38 @@ class Chat
         return ['ok' => true, 'thread_id' => (int) $thread['id'], 'error' => ''];
     }
 
-    /** Найти обращение по ответу, теме или префиксу «#12». */
-    private function resolveThread(array $parsed): ?array
+    /**
+     * Обращение по номеру из текста. В общем боте номер несёт метку сайта
+     * («#daristihi-12»), в обычном — просто «#12». Метка обязана совпасть с
+     * доменом этого сайта, иначе номер относится к соседу.
+     */
+    private function threadByNumber(string $text, bool $shared): ?array
     {
+        if ($shared) {
+            if (!preg_match('/#([a-z0-9-]+)-(\d+)\b/ui', $text, $m)) {
+                return null;
+            }
+            if (strtolower($m[1]) !== $this->ownTag()) {
+                return null;
+            }
+            return $this->getThread((int) $m[2]);
+        }
+
+        if (preg_match('/#(\d+)\b/', $text, $m)) {
+            return $this->getThread((int) $m[1]);
+        }
+
+        return null;
+    }
+
+    /** Найти обращение по ответу, теме или префиксу «#12» / «#daristihi-12». */
+    private function resolveThread(array $parsed, bool $shared = false): ?array
+    {
+        $this->resolveReason = 'empty';
+
         // 1. Ответ (quote) на сообщение бота: mid → сообщение → обращение.
+        //    Самый точный способ и единственный, который не зависит от того,
+        //    сколько сайтов сидит на боте.
         $replyMid = (string) ($parsed['reply_mid'] ?? '');
         if ($replyMid !== '') {
             $row = $this->db->query(
@@ -389,14 +497,35 @@ class Chat
                     return $thread;
                 }
             }
+            // Цитата есть, а mid у нас нет — это сообщение другого сайта.
+            $this->resolveReason = 'foreign';
         }
 
-        // 2. Явный номер в тексте: «#12 текст».
-        if (preg_match('/^#(\d+)\b/', (string) ($parsed['text'] ?? ''), $m)) {
-            $thread = $this->getThread((int) $m[1]);
+        $text = (string) ($parsed['text'] ?? '');
+
+        // 1.5. Текст цитаты: в нём есть номер обращения («#daristihi-12 · Иван»).
+        //      Второй независимый путь — работает даже когда mid не совпал,
+        //      а в общем боте ещё и отсекает чужие сайты по метке.
+        $quoted = (string) ($parsed['reply_text'] ?? '');
+        if ($quoted !== '') {
+            $thread = $this->threadByNumber($quoted, $shared);
             if ($thread) {
                 return $thread;
             }
+            if ($shared) {
+                $this->resolveReason = 'foreign';
+            }
+        }
+
+        // 2. Явный номер в тексте. В общем режиме номер несёт метку сайта:
+        //    «#daristihi-12 текст» — иначе «#3» совпадает у всех сайтов.
+        if (preg_match('/^#[a-z0-9-]*\d+\b/ui', $text)) {
+            $thread = $this->threadByNumber($text, $shared);
+            if ($thread) {
+                return $thread;
+            }
+            // Номер есть, а своего обращения нет — чужой сайт или удалённое.
+            $this->resolveReason = 'foreign';
         }
 
         // 3. Тема Telegram: id темы = внешняя ссылка обращения.
@@ -411,7 +540,33 @@ class Chat
             }
         }
 
-        // 4. Последнее активное обращение — обычный сценарий для одного
+        // 4. Общий бот: оператор ответил без цитаты и без номера — адресат
+        //    тот, чьё сообщение бота в чате последнее. Читаем чат и ищем mid
+        //    этого сообщения у себя: найдётся ровно у одного сайта, и никто
+        //    не получит чужой ответ.
+        if ($shared) {
+            $channel = $this->channel();
+            $lastMid = $channel !== null ? $channel->lastBotMid() : '';
+            if ($lastMid === '') {
+                return null; // подсказка в чат: привязать не к чему
+            }
+
+            $row = $this->db->query(
+                "SELECT thread_id FROM plugin_webchat_messages WHERE external_mid = ? LIMIT 1",
+                [$lastMid]
+            )->fetch(\PDO::FETCH_ASSOC);
+            if ($row && !empty($row['thread_id'])) {
+                $thread = $this->getThread((int) $row['thread_id']);
+                if ($thread) {
+                    return $thread;
+                }
+            }
+
+            $this->resolveReason = 'foreign';
+            return null;
+        }
+
+        // 5. Последнее активное обращение — обычный сценарий для одного
         // оператора. Берём именно последнее ОБНОВЛЁННОЕ, а не запомненное
         // в настройках: настройка пишется только при ответе из админки, и
         // после первого же нового обращения ответ из мессенджера терялся.
@@ -436,7 +591,8 @@ class Chat
 
     private function stripThreadPrefix(string $text): string
     {
-        $text = preg_replace('/^#\d+\s*/u', '', $text);
+        // «#12 », «#daristihi-12 » — номер обращения не должен попасть в текст.
+        $text = preg_replace('/^#[a-z0-9-]*\d+\s*/ui', '', $text);
         return trim((string) $text);
     }
 

@@ -36,6 +36,8 @@ class AdminChatsController extends \Admin\BaseController
             'unread' => $chat->unreadCount(),
             'channel_ready' => $chat->channelReady(),
             'channel' => $chat->settings()->channel(),
+            'shared_bot' => $chat->sharedBot(),
+            'site_tag' => Chat::siteTag((string) ($_SERVER['HTTP_HOST'] ?? '')),
         ]);
     }
 

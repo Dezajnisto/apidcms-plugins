@@ -45,6 +45,19 @@ class TelegramChannel implements ChannelInterface
             return ['ok' => false, 'error' => 'не заданы токен или ID чата'];
         }
 
+        // У бота только один вебхук. Если он уже указывает на другой сайт,
+        // setWebhook молча отберёт события у того сайта — лучше отказать и
+        // сказать, что делать, чем сломать соседний сайт невидимо.
+        $info = Http::get($this->endpoint('getWebhookInfo'));
+        $current = (string) ($info['data']['result']['url'] ?? '');
+        if ($current !== '' && rtrim($current, '/') !== rtrim($url, '/')) {
+            return [
+                'ok' => false,
+                'error' => 'этот бот уже подписан на ' . $current
+                    . ' — Telegram разрешает только один вебхук на бота. Заведите отдельного бота или сначала отвяжите текущий',
+            ];
+        }
+
         $res = Http::postJson($this->endpoint('setWebhook'), [
             'url' => $url,
             'secret_token' => $secret,
@@ -111,10 +124,13 @@ class TelegramChannel implements ChannelInterface
             return null;
         }
 
+        $replied = is_array($message['reply_to_message'] ?? null) ? $message['reply_to_message'] : [];
+
         return [
             'text' => $text,
             'from_bot' => $fromBot,
-            'reply_mid' => (string) ($message['reply_to_message']['message_id'] ?? ''),
+            'reply_mid' => (string) ($replied['message_id'] ?? ''),
+            'reply_text' => (string) ($replied['text'] ?? $replied['caption'] ?? ''),
             'author' => trim((string) ($message['from']['first_name'] ?? '') . ' ' . (string) ($message['from']['last_name'] ?? '')),
             'chat_id' => (string) ($message['chat']['id'] ?? ''),
             'chat_type' => (string) ($message['chat']['type'] ?? ''),
@@ -135,6 +151,20 @@ class TelegramChannel implements ChannelInterface
             $parts[] = mb_substr($path, 0, 40);
         }
         return mb_substr(implode(' · ', $parts), 0, 120);
+    }
+
+    /**
+     * Общий бот для Telegram невозможен: setWebhook у бота один, второй сайт
+     * перезаписывает первый. Поэтому здесь всегда false.
+     */
+    public function isShared(): bool
+    {
+        return false;
+    }
+
+    public function lastBotMid(): string
+    {
+        return '';
     }
 
     private function endpoint(string $method): string

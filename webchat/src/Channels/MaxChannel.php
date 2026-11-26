@@ -23,15 +23,20 @@ class MaxChannel implements ChannelInterface
     private string $chatId;
     private string $api;
 
+    /** ID чата для ЧТЕНИЯ истории. В диалоге с ботом он не равен user_id. */
+    private string $readChatId;
+
     /**
-     * @param string $api Переопределение адреса API — только для локальных
-     *                    тестов (см. README, «Проверка без реального бота»).
+     * @param string $api        Переопределение адреса API — только для локальных
+     *                           тестов (см. README, «Проверка без реального бота»).
+     * @param string $readChatId chat_id чата оператора (для GET /messages).
      */
-    public function __construct(string $token, string $chatId, string $api = '')
+    public function __construct(string $token, string $chatId, string $api = '', string $readChatId = '')
     {
         $this->token = trim($token);
         $this->chatId = trim($chatId);
         $this->api = rtrim($api !== '' ? $api : self::API, '/');
+        $this->readChatId = trim($readChatId);
     }
 
     public function name(): string
@@ -109,9 +114,26 @@ class MaxChannel implements ChannelInterface
         }
 
         $replyMid = '';
+        $replyText = '';
         $link = $message['link'] ?? null;
         if (is_array($link) && ($link['type'] ?? '') === 'reply') {
-            $replyMid = (string) ($link['message']['body']['mid'] ?? $link['message']['mid'] ?? '');
+            // Структура у MAX уже менялась: mid ищем во всех известных местах.
+            $quoted = is_array($link['message'] ?? null) ? $link['message'] : [];
+            foreach ([
+                $quoted['body']['mid'] ?? null,
+                $quoted['mid'] ?? null,
+                $link['mid'] ?? null,
+            ] as $candidate) {
+                if (is_string($candidate) && $candidate !== '') {
+                    $replyMid = $candidate;
+                    break;
+                }
+            }
+
+            // Текст цитаты — второй, независимый путь: в нём есть номер
+            // обращения («#daristihi-12 · Посетитель»), и по нему ответ
+            // привязывается даже если mid не совпал.
+            $replyText = (string) ($quoted['body']['text'] ?? $quoted['text'] ?? '');
         }
 
         $sender = $message['sender'] ?? [];
@@ -121,6 +143,7 @@ class MaxChannel implements ChannelInterface
             'text' => $text,
             'from_bot' => !empty($sender['is_bot']),
             'reply_mid' => $replyMid,
+            'reply_text' => $replyText,
             'author' => trim((string) ($sender['first_name'] ?? '') . ' ' . (string) ($sender['last_name'] ?? '')),
             'chat_id' => (string) ($recipient['chat_id'] ?? $update['chat_id'] ?? ''),
             'chat_type' => (string) ($recipient['chat_type'] ?? ''),
@@ -132,5 +155,70 @@ class MaxChannel implements ChannelInterface
     private function auth(): array
     {
         return ['Authorization: ' . $this->token];
+    }
+
+    /**
+     * Бот обслуживает больше одного сайта: в /subscriptions больше одного URL.
+     *
+     * MAX разрешает несколько вебхуков у одного бота (в отличие от Telegram),
+     * поэтому общий бот на все проекты — рабочая схема. Плата за неё — каждое
+     * событие уходит на вебхук каждого сайта.
+     */
+    public function isShared(): bool
+    {
+        if ($this->token === '') {
+            return false;
+        }
+
+        $res = Http::get($this->api . '/subscriptions', $this->auth());
+        if (!$res['ok']) {
+            return false;
+        }
+
+        $urls = [];
+        foreach ((array) ($res['data']['subscriptions'] ?? []) as $sub) {
+            $url = trim((string) ($sub['url'] ?? ''));
+            if ($url !== '') {
+                $urls[$url] = true;
+            }
+        }
+
+        return count($urls) > 1;
+    }
+
+    /** mid последнего сообщения бота в чате оператора. */
+    public function lastBotMid(): string
+    {
+        if ($this->token === '' || $this->readChatId === '') {
+            return '';
+        }
+
+        $url = $this->api . '/messages?chat_id=' . rawurlencode($this->readChatId) . '&count=20';
+        $res = Http::get($url, $this->auth());
+        if (!$res['ok']) {
+            return '';
+        }
+
+        // Порядок в ответе API не гарантирован — берём по максимальному
+        // timestamp, а не «первое сверху».
+        $messages = (array) ($res['data']['messages'] ?? []);
+        $bestMid = '';
+        $bestAt = -1;
+        foreach ($messages as $message) {
+            if (empty($message['sender']['is_bot'])) {
+                continue;
+            }
+            $mid = (string) ($message['body']['mid'] ?? ($message['mid'] ?? ''));
+            if ($mid === '') {
+                continue;
+            }
+            $at = (int) ($message['timestamp'] ?? 0);
+            if ($at >= $bestAt) {
+                $bestAt = $at;
+                $bestMid = $mid;
+            }
+        }
+
+        return $bestMid;
     }
 }

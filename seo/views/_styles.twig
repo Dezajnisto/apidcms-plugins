@@ -1,0 +1,297 @@
+{#
+    Стили плагина SEO.
+
+    Почему не Tailwind: admin.css ядра — собранный (purged) Tailwind, в нём
+    только классы, которые используют шаблоны ядра. Плагин не может
+    рассчитывать на bg-indigo-600 или leading-snug: их просто нет в файле, и
+    кнопка с белым текстом на прозрачном фоне становится невидимой.
+
+    Поэтому всё, что рисует плагин, описано здесь семантическими классами под
+    .seo-admin: вид не зависит от пересборки Tailwind в ядре и не течёт в
+    остальную админку.
+#}
+<style>
+.seo-admin {
+    --seo-border: #e5e7eb;
+    --seo-border-strong: #d1d5db;
+    --seo-bg: #ffffff;
+    --seo-bg-soft: #f9fafb;
+    --seo-text: #111827;
+    --seo-muted: #6b7280;
+    --seo-faint: #9ca3af;
+    --seo-blue: #2563eb;
+    --seo-blue-dark: #1d4ed8;
+    --seo-indigo: #4f46e5;
+    --seo-indigo-dark: #4338ca;
+    --seo-indigo-soft: #eef2ff;
+    --seo-green: #16a34a;
+    --seo-amber: #d97706;
+    --seo-red: #dc2626;
+    --seo-radius: 8px;
+    color: var(--seo-text);
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+.seo-admin *,
+.seo-admin *::before,
+.seo-admin *::after { box-sizing: border-box; }
+
+.seo-admin h1, .seo-admin h2, .seo-admin p, .seo-admin ul, .seo-admin li { margin: 0; padding: 0; }
+.seo-admin ul { list-style: none; }
+
+/* ===== Сетка ===== */
+
+.seo-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
+
+.seo-head {
+    display: flex; flex-wrap: wrap; align-items: flex-start;
+    justify-content: space-between; gap: 12px; margin-bottom: 20px;
+}
+.seo-head__title { font-size: 18px; font-weight: 600; margin-top: 4px; line-height: 1.35; }
+.seo-head__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 12px; color: var(--seo-muted); }
+
+.seo-cols { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.seo-cols--even { grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); }
+.seo-stack { display: grid; gap: 16px; }
+
+@media (max-width: 1024px) {
+    .seo-cols, .seo-cols--even { grid-template-columns: minmax(0, 1fr); }
+}
+
+.seo-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 20px; }
+@media (max-width: 900px) { .seo-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 520px) { .seo-stats { grid-template-columns: minmax(0, 1fr); } }
+
+/* ===== Карточки ===== */
+
+.seo-card {
+    background: var(--seo-bg);
+    border: 1px solid var(--seo-border);
+    border-radius: var(--seo-radius);
+    padding: 20px;
+}
+.seo-card--flush { padding: 0; overflow: hidden; }
+.seo-card--center { text-align: center; }
+
+.seo-card__head {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--seo-border);
+    font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--seo-muted);
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+}
+.seo-card__label { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--seo-muted); margin-bottom: 12px; }
+
+.seo-stat__label { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--seo-muted); }
+.seo-stat__value { font-size: 28px; font-weight: 700; line-height: 1.15; margin-top: 4px; }
+.seo-stat__value--good { color: var(--seo-green); }
+.seo-stat__value--warn { color: var(--seo-amber); }
+.seo-stat__value--bad { color: var(--seo-red); }
+.seo-stat__value--none { color: var(--seo-faint); }
+.seo-stat__hint { font-size: 12px; color: var(--seo-muted); margin-top: 4px; }
+
+/* ===== Кнопки ===== */
+
+.seo-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 14px;
+    font-size: 13px; font-weight: 500; line-height: 1.2;
+    border-radius: 6px; border: 1px solid var(--seo-border-strong);
+    background: var(--seo-bg); color: #374151;
+    cursor: pointer; text-decoration: none; white-space: nowrap;
+    transition: background-color .15s, border-color .15s, color .15s;
+}
+.seo-btn:hover { background: var(--seo-bg-soft); border-color: var(--seo-faint); }
+.seo-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+.seo-btn--primary { background: var(--seo-blue); border-color: var(--seo-blue); color: #fff; }
+.seo-btn--primary:hover { background: var(--seo-blue-dark); border-color: var(--seo-blue-dark); }
+
+.seo-btn--ai { background: var(--seo-indigo); border-color: var(--seo-indigo); color: #fff; }
+.seo-btn--ai:hover { background: var(--seo-indigo-dark); border-color: var(--seo-indigo-dark); }
+
+.seo-btn--ghost { background: #fff; border-color: #c7d2fe; color: var(--seo-indigo-dark); }
+.seo-btn--ghost:hover { background: var(--seo-indigo-soft); border-color: var(--seo-indigo); }
+
+.seo-btn--sm { padding: 5px 10px; font-size: 12px; }
+.seo-btn--icon { padding: 4px 7px; border: none; background: none; color: var(--seo-faint); }
+.seo-btn--icon:hover { color: var(--seo-indigo); background: none; }
+.seo-btn--danger:hover { color: var(--seo-red); }
+
+.seo-btn--link { border: none; background: none; color: var(--seo-muted); padding: 0; }
+.seo-btn--link:hover { color: var(--seo-blue); background: none; }
+
+.seo-actions {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    padding-top: 16px; margin-top: 4px; border-top: 1px solid var(--seo-border);
+}
+.seo-actions__note { margin-left: auto; font-size: 12px; color: var(--seo-faint); }
+
+/* ===== Панель нейросети ===== */
+
+.seo-ai {
+    border: 1px solid #c7d2fe;
+    background: var(--seo-indigo-soft);
+    border-radius: var(--seo-radius);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+}
+.seo-ai__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.seo-ai__title { font-size: 14px; font-weight: 600; color: #312e81; }
+.seo-ai__hint { font-size: 12px; color: #4338ca; margin-top: 2px; max-width: 60ch; }
+.seo-ai__buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.seo-ai__status { font-size: 12px; color: #4338ca; margin-top: 10px; }
+.seo-ai__status.is-error { color: var(--seo-red); }
+
+/* ===== Поля ===== */
+
+.seo-field { margin-bottom: 18px; }
+.seo-field:last-of-type { margin-bottom: 0; }
+.seo-field__top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.seo-field__label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #374151; }
+.seo-field__count { font-size: 12px; color: var(--seo-faint); }
+.seo-field__count.is-bad { color: var(--seo-red); }
+.seo-field__count.is-good { color: var(--seo-green); }
+.seo-field__hint { font-size: 12px; color: var(--seo-muted); margin-top: 6px; }
+.seo-field__hint--warn { color: #b45309; }
+
+.seo-admin input[type="text"],
+.seo-admin input[type="search"],
+.seo-admin textarea,
+.seo-admin select {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--seo-text);
+    background: #fff;
+    border: 1px solid var(--seo-border-strong);
+    border-radius: 6px;
+    line-height: 1.45;
+}
+.seo-admin textarea { resize: vertical; min-height: 76px; }
+.seo-admin input[type="text"]:focus,
+.seo-admin textarea:focus,
+.seo-admin select:focus {
+    outline: none;
+    border-color: var(--seo-blue);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+}
+.seo-admin input::placeholder, .seo-admin textarea::placeholder { color: #b3b8c2; }
+
+.seo-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 720px) { .seo-field-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ===== Предложение нейросети ===== */
+
+.seo-sug {
+    margin-top: 10px;
+    padding: 12px;
+    border: 1px solid #c7d2fe;
+    border-radius: 6px;
+    background: var(--seo-indigo-soft);
+}
+.seo-sug[hidden] { display: none; }
+.seo-sug__label { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: #6366f1; margin-bottom: 6px; }
+.seo-sug__text { font-size: 14px; line-height: 1.5; color: #1e1b4b; overflow-wrap: anywhere; }
+.seo-sug__actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.seo-sug__chips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.seo-chip {
+    padding: 5px 10px; font-size: 12px; font-family: inherit;
+    border: 1px solid #c7d2fe; border-radius: 999px;
+    background: #fff; color: var(--seo-indigo-dark); cursor: pointer;
+}
+.seo-chip:hover { background: #e0e7ff; border-color: var(--seo-indigo); }
+
+/* ===== Оценка ===== */
+
+.seo-score { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 116px; height: 116px; }
+.seo-score__value { position: absolute; font-size: 30px; font-weight: 700; line-height: 1; }
+.seo-score__value--ok { color: var(--seo-green); }
+.seo-score__value--warn { color: var(--seo-amber); }
+.seo-score__value--bad { color: var(--seo-red); }
+.seo-score__summary { font-size: 12px; color: var(--seo-muted); margin-top: 10px; }
+
+/* ===== Чек-лист ===== */
+
+.seo-check { display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px; border-top: 1px solid #f3f4f6; }
+.seo-check:first-child { border-top: none; }
+.seo-check__icon { flex: 0 0 auto; margin-top: 2px; font-size: 13px; }
+.seo-check__icon--ok { color: var(--seo-green); }
+.seo-check__icon--warn { color: #f59e0b; }
+.seo-check__icon--fail { color: var(--seo-red); }
+.seo-check__label { font-size: 13px; line-height: 1.4; color: #1f2937; }
+.seo-check__message { font-size: 12px; color: var(--seo-muted); margin-top: 2px; line-height: 1.45; }
+.seo-check__hint { font-size: 12px; color: var(--seo-faint); margin-top: 2px; line-height: 1.45; }
+
+/* ===== Таблицы ===== */
+
+.seo-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.seo-table th {
+    text-align: left; font-weight: 500; font-size: 12px; color: var(--seo-muted);
+    background: var(--seo-bg-soft); padding: 9px 16px; border-bottom: 1px solid var(--seo-border);
+    white-space: nowrap;
+}
+.seo-table td { padding: 10px 16px; border-bottom: 1px solid #f3f4f6; vertical-align: top; }
+.seo-table tbody tr:last-child td { border-bottom: none; }
+.seo-table tbody tr:hover { background: #fcfcfd; }
+.seo-table__num { text-align: right; white-space: nowrap; }
+.seo-table__mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; overflow-wrap: anywhere; }
+
+.seo-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 44px; padding: 3px 8px;
+    font-size: 12px; font-weight: 700; border-radius: 6px;
+}
+.seo-badge--ok { background: #dcfce7; color: #15803d; }
+.seo-badge--warn { background: #fef3c7; color: #b45309; }
+.seo-badge--bad { background: #fee2e2; color: #b91c1c; }
+.seo-badge--none { background: #f3f4f6; color: var(--seo-faint); }
+
+/* ===== Разное ===== */
+
+.seo-link { color: var(--seo-blue); text-decoration: none; }
+.seo-link:hover { text-decoration: underline; }
+.seo-muted { color: var(--seo-muted); }
+.seo-faint { color: var(--seo-faint); }
+.seo-small { font-size: 12px; }
+.seo-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.seo-break { overflow-wrap: anywhere; }
+.seo-tag { display: inline-block; padding: 2px 8px; font-size: 12px; background: #f3f4f6; border-radius: 4px; color: #4b5563; }
+.seo-kw { display: inline-block; padding: 2px 8px; font-size: 12px; background: #f3f4f6; border-radius: 4px; color: #374151; }
+
+.seo-flash { padding: 12px 16px; border-radius: var(--seo-radius); font-size: 13px; margin-bottom: 16px; border: 1px solid; }
+.seo-flash--ok { background: #f0fdf4; border-color: #bbf7d0; color: #166534; }
+.seo-flash--error { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+
+.seo-notice { padding: 12px 16px; border-radius: var(--seo-radius); font-size: 13px; margin-bottom: 16px; border: 1px solid #fde68a; background: #fffbeb; color: #92400e; }
+
+.seo-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.seo-toolbar__group { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.seo-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.seo-tab {
+    padding: 6px 12px; font-size: 13px; border-radius: 6px; text-decoration: none;
+    border: 1px solid var(--seo-border-strong); background: #fff; color: #374151;
+}
+.seo-tab:hover { background: var(--seo-bg-soft); }
+.seo-tab.is-active { background: var(--seo-blue); border-color: var(--seo-blue); color: #fff; }
+
+.seo-empty { padding: 48px 24px; text-align: center; color: var(--seo-muted); }
+.seo-empty i { font-size: 28px; color: #d1d5db; display: block; margin-bottom: 10px; }
+.seo-empty p { font-size: 14px; }
+.seo-empty p + p { font-size: 12px; margin-top: 4px; color: var(--seo-faint); }
+
+.seo-progress { border: 1px solid #bfdbfe; background: #eff6ff; border-radius: var(--seo-radius); padding: 12px 16px; font-size: 13px; color: #1e40af; margin-bottom: 16px; }
+.seo-progress[hidden] { display: none; }
+.seo-progress__top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.seo-progress__counter { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+.seo-progress__track { height: 8px; background: #dbeafe; border-radius: 999px; overflow: hidden; }
+.seo-progress__bar { height: 8px; width: 0; background: var(--seo-blue); transition: width .2s; }
+
+.seo-snippet { max-width: 640px; }
+.seo-snippet__url { font-size: 12px; color: #4b5563; margin-bottom: 2px; }
+.seo-snippet__title { font-size: 18px; line-height: 1.35; color: #1a0dab; }
+.seo-snippet__desc { font-size: 13px; line-height: 1.5; color: #4d5156; margin-top: 3px; }
+</style>

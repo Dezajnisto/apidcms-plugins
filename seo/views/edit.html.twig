@@ -4,171 +4,140 @@
 {% block page_title %}SEO страницы{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6">
+{% include '@seo/_styles.twig' %}
+{% import '@seo/_icons.twig' as icons %}
+<div class="seo-admin">
+<div class="seo-wrap">
 
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+    <div class="seo-head">
         <div>
-            <a href="{{ admin_url('seo') }}" class="text-sm text-gray-500 hover:text-blue-600">
-                <i class="fas fa-arrow-left mr-1"></i> ко всем страницам
+            <a href="{{ admin_url('seo') }}" class="seo-btn seo-btn--link seo-small">
+                {{ icons.icon('arrow-left') }} ко всем страницам
             </a>
-            <h1 class="text-lg font-semibold text-gray-900 mt-1">
-                {{ doc.title is not empty ? doc.title : '(без заголовка)' }}
-            </h1>
-            <a href="{{ doc.url }}" target="_blank" rel="noopener" class="text-sm text-blue-600 hover:underline">
-                {{ doc.url }} <i class="fas fa-external-link-alt text-xs"></i>
+            <h1 class="seo-head__title">{{ doc.title is not empty ? doc.title : '(без заголовка)' }}</h1>
+            <a href="{{ doc.url }}" target="_blank" rel="noopener" class="seo-link seo-small">
+                {{ doc.url }} {{ icons.icon('external-link') }}
             </a>
         </div>
-        <div class="flex items-center gap-2 text-xs text-gray-500">
-            <span class="px-2 py-1 bg-gray-100 rounded">{{ doc.type == 'page' ? 'страница' : (doc.type == 'record' ? 'запись: ' ~ doc.table : 'раздел') }}</span>
+        <div class="seo-head__meta">
+            <span class="seo-tag">{{ doc.type == 'page' ? 'страница' : (doc.type == 'record' ? 'запись: ' ~ doc.table : 'раздел') }}</span>
             {% if doc.updated_at %}<span>обновлено {{ doc.updated_at }}</span>{% endif %}
         </div>
     </div>
 
     {% if flash %}
-    <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ flash.type == 'error' ? 'border-red-300 bg-red-50 text-red-800' : 'border-green-300 bg-green-50 text-green-800' }}">
-        {{ flash.message }}
-    </div>
+    <div class="seo-flash {{ flash.type == 'error' ? 'seo-flash--error' : 'seo-flash--ok' }}">{{ flash.message }}</div>
     {% endif %}
 
     <!-- Панель нейросети: видна сразу, ничего не прячет -->
-    <div class="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+    <div class="seo-ai">
+        <div class="seo-ai__row">
             <div>
-                <p class="text-sm font-semibold text-indigo-900">
-                    <i class="fas fa-wand-magic-sparkles mr-1"></i> Заполнить нейросетью
-                </p>
-                <p class="text-xs text-indigo-700 mt-0.5">
+                <p class="seo-ai__title">{{ icons.icon('sparkles') }} Заполнить нейросетью</p>
+                <p class="seo-ai__hint">
                     {% if ai_ready %}
-                    Пишет по тексту страницы. Результат сначала показывается как предложение —
+                    Пишет по тексту страницы. Результат сначала показывается предложением —
                     примените или отмените, ничего не перезаписывается молча.
                     {% else %}
-                    Недоступно: не задан ключ DeepSeek в
-                    <a href="{{ admin_url('settings') }}" class="underline">настройках AI</a>.
+                    Недоступно: не задан ключ DeepSeek в <a href="{{ admin_url('settings') }}" class="seo-link">настройках AI</a>.
                     {% endif %}
                 </p>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-                <button type="button" data-ai="all"
-                        class="ai-run px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs hover:bg-indigo-700 disabled:opacity-50"
-                        {{ ai_ready ? '' : 'disabled' }}>
-                    Всё сразу
-                </button>
-                <button type="button" data-ai="title"
-                        class="ai-run px-3 py-1.5 bg-white text-indigo-700 border border-indigo-300 rounded-md text-xs hover:bg-indigo-100 disabled:opacity-50"
-                        {{ ai_ready ? '' : 'disabled' }}>
-                    Заголовок
-                </button>
-                <button type="button" data-ai="description"
-                        class="ai-run px-3 py-1.5 bg-white text-indigo-700 border border-indigo-300 rounded-md text-xs hover:bg-indigo-100 disabled:opacity-50"
-                        {{ ai_ready ? '' : 'disabled' }}>
-                    Описание
-                </button>
-                <button type="button" data-ai="keyword"
-                        class="ai-run px-3 py-1.5 bg-white text-indigo-700 border border-indigo-300 rounded-md text-xs hover:bg-indigo-100 disabled:opacity-50"
-                        {{ ai_ready ? '' : 'disabled' }}>
-                    Ключевые фразы
-                </button>
+            <div class="seo-ai__buttons">
+                <button type="button" data-ai="all" class="seo-btn seo-btn--ai seo-btn--sm ai-run" {{ ai_ready ? '' : 'disabled' }}>Всё сразу</button>
+                <button type="button" data-ai="title" class="seo-btn seo-btn--ghost seo-btn--sm ai-run" {{ ai_ready ? '' : 'disabled' }}>Заголовок</button>
+                <button type="button" data-ai="description" class="seo-btn seo-btn--ghost seo-btn--sm ai-run" {{ ai_ready ? '' : 'disabled' }}>Описание</button>
+                <button type="button" data-ai="keyword" class="seo-btn seo-btn--ghost seo-btn--sm ai-run" {{ ai_ready ? '' : 'disabled' }}>Ключевые фразы</button>
             </div>
         </div>
-        <p id="ai-status" class="text-xs text-indigo-700 mt-2 hidden"></p>
+        <p id="ai-status" class="seo-ai__status" hidden></p>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div class="seo-cols">
 
         <!-- Поля -->
-        <div class="lg:col-span-2 space-y-4">
-            <form method="post" action="{{ admin_url('seo/save') }}" class="bg-white rounded-lg border p-5 space-y-4">
+        <div class="seo-stack">
+            <form method="post" action="{{ admin_url('seo/save') }}" class="seo-card">
                 <input type="hidden" name="key" value="{{ key }}">
 
                 <!-- Заголовок -->
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <div class="flex items-center gap-2">
-                            <label class="text-sm font-medium text-gray-700">SEO-заголовок</label>
+                <div class="seo-field">
+                    <div class="seo-field__top">
+                        <span class="seo-field__label">
+                            SEO-заголовок
                             <button type="button" data-ai="title" title="Сгенерировать заголовок"
-                                    class="ai-run text-indigo-500 hover:text-indigo-700 disabled:opacity-40"
-                                    {{ ai_ready ? '' : 'disabled' }}>
-                                <i class="fas fa-wand-magic-sparkles text-xs"></i>
+                                    class="seo-btn seo-btn--icon ai-run" {{ ai_ready ? '' : 'disabled' }}>
+                                {{ icons.icon('sparkles') }}
                             </button>
-                        </div>
-                        <span class="text-xs text-gray-400">
-                            <span id="title-count">0</span> символов · оптимально 30–65
                         </span>
+                        <span class="seo-field__count"><span id="title-count">0</span> символов · оптимально 30–65</span>
                     </div>
                     <input type="text" name="title" id="f-title" value="{{ row.title ?? '' }}"
-                           placeholder="{{ doc.title }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                    <p class="mt-1 text-xs text-gray-500">
-                        Пусто — на сайте работает заголовок из контента: «{{ result.meta.title }}»
-                    </p>
-                    <div id="sug-title" class="hidden mt-2 rounded-md border border-indigo-200 bg-indigo-50 p-3">
-                        <p class="text-xs uppercase tracking-wide text-indigo-500 mb-1">Предложение нейросети</p>
-                        <p class="text-sm text-indigo-900" id="sug-title-text"></p>
-                        <div class="mt-2 flex items-center gap-2">
-                            <button type="button" data-apply="title"
-                                    class="px-2.5 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700">Применить</button>
-                            <button type="button" data-cancel="title"
-                                    class="px-2.5 py-1 border border-indigo-300 text-indigo-700 rounded text-xs hover:bg-indigo-100">Отменить</button>
+                           placeholder="{{ result.meta.title }}">
+                    <p class="seo-field__hint">Пусто — на сайте работает заголовок из контента: «{{ result.meta.title }}»</p>
+                    <div id="sug-title" class="seo-sug" hidden>
+                        <p class="seo-sug__label">Предложение нейросети</p>
+                        <p class="seo-sug__text" id="sug-title-text"></p>
+                        <div class="seo-sug__actions">
+                            <button type="button" data-apply="title" class="seo-btn seo-btn--ai seo-btn--sm">Применить</button>
+                            <button type="button" data-cancel="title" class="seo-btn seo-btn--ghost seo-btn--sm">Отменить</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- Описание -->
-                <div>
-                    <div class="flex items-center justify-between mb-1">
-                        <div class="flex items-center gap-2">
-                            <label class="text-sm font-medium text-gray-700">Описание (description)</label>
+                <div class="seo-field">
+                    <div class="seo-field__top">
+                        <span class="seo-field__label">
+                            Описание (description)
                             <button type="button" data-ai="description" title="Сгенерировать описание"
-                                    class="ai-run text-indigo-500 hover:text-indigo-700 disabled:opacity-40"
-                                    {{ ai_ready ? '' : 'disabled' }}>
-                                <i class="fas fa-wand-magic-sparkles text-xs"></i>
+                                    class="seo-btn seo-btn--icon ai-run" {{ ai_ready ? '' : 'disabled' }}>
+                                {{ icons.icon('sparkles') }}
                             </button>
-                        </div>
-                        <span class="text-xs text-gray-400">
-                            <span id="desc-count">0</span> символов · оптимально 70–170
                         </span>
+                        <span class="seo-field__count"><span id="desc-count">0</span> символов · оптимально 70–170</span>
                     </div>
                     <textarea name="description" id="f-description" rows="3"
-                              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">{{ row.description ?? '' }}</textarea>
+                              placeholder="{{ result.meta.description }}">{{ row.description ?? '' }}</textarea>
                     {% if not has_content %}
-                    <p class="mt-1 text-xs text-amber-700">У страницы нет текста — модель будет опираться на заголовок и адрес.</p>
+                    <p class="seo-field__hint seo-field__hint--warn">У страницы нет текста — модель будет опираться на заголовок и адрес.</p>
                     {% endif %}
-                    <div id="sug-description" class="hidden mt-2 rounded-md border border-indigo-200 bg-indigo-50 p-3">
-                        <p class="text-xs uppercase tracking-wide text-indigo-500 mb-1">Предложение нейросети</p>
-                        <p class="text-sm text-indigo-900" id="sug-description-text"></p>
-                        <div class="mt-2 flex items-center gap-2">
-                            <button type="button" data-apply="description"
-                                    class="px-2.5 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700">Применить</button>
-                            <button type="button" data-cancel="description"
-                                    class="px-2.5 py-1 border border-indigo-300 text-indigo-700 rounded text-xs hover:bg-indigo-100">Отменить</button>
+                    <div id="sug-description" class="seo-sug" hidden>
+                        <p class="seo-sug__label">Предложение нейросети</p>
+                        <p class="seo-sug__text" id="sug-description-text"></p>
+                        <div class="seo-sug__actions">
+                            <button type="button" data-apply="description" class="seo-btn seo-btn--ai seo-btn--sm">Применить</button>
+                            <button type="button" data-cancel="description" class="seo-btn seo-btn--ghost seo-btn--sm">Отменить</button>
                         </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="seo-field-grid">
                     <!-- Ключевая фраза -->
-                    <div>
-                        <div class="flex items-center gap-2 mb-1">
-                            <label class="text-sm font-medium text-gray-700">Ключевая фраза</label>
-                            <button type="button" data-ai="keyword" title="Предложить фразы"
-                                    class="ai-run text-indigo-500 hover:text-indigo-700 disabled:opacity-40"
-                                    {{ ai_ready ? '' : 'disabled' }}>
-                                <i class="fas fa-wand-magic-sparkles text-xs"></i>
-                            </button>
+                    <div class="seo-field">
+                        <div class="seo-field__top">
+                            <span class="seo-field__label">
+                                Ключевая фраза
+                                <button type="button" data-ai="keyword" title="Предложить фразы"
+                                        class="seo-btn seo-btn--icon ai-run" {{ ai_ready ? '' : 'disabled' }}>
+                                    {{ icons.icon('sparkles') }}
+                                </button>
+                            </span>
                         </div>
                         <input type="text" name="focus_keyword" id="f-keyword" value="{{ row.focus_keyword ?? '' }}"
-                               placeholder="например: ремонт квартир под ключ"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                        <p class="mt-1 text-xs text-gray-500">По ней считаются позиция в заголовке, тексте, адресе и плотность.</p>
-                        <div id="sug-keyword" class="hidden mt-2 rounded-md border border-indigo-200 bg-indigo-50 p-3">
-                            <p class="text-xs uppercase tracking-wide text-indigo-500 mb-1">Варианты от нейросети — нажмите, чтобы выбрать</p>
-                            <div id="sug-keyword-list" class="flex flex-wrap gap-2"></div>
+                               placeholder="например: ремонт квартир под ключ">
+                        <p class="seo-field__hint">По ней считаются позиция в заголовке, тексте, адресе и плотность.</p>
+                        <div id="sug-keyword" class="seo-sug" hidden>
+                            <p class="seo-sug__label">Варианты от нейросети — нажмите, чтобы выбрать</p>
+                            <div id="sug-keyword-list" class="seo-sug__chips"></div>
                         </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Robots</label>
+                    <div class="seo-field">
+                        <div class="seo-field__top">
+                            <span class="seo-field__label">Robots</span>
+                        </div>
                         {% set robots = row.robots ?? '' %}
-                        <select name="robots" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        <select name="robots">
                             <option value="" {{ robots == '' ? 'selected' : '' }}>по умолчанию (index,follow)</option>
                             <option value="index,follow" {{ robots == 'index,follow' ? 'selected' : '' }}>index,follow — индексировать</option>
                             <option value="noindex,follow" {{ robots == 'noindex,follow' ? 'selected' : '' }}>noindex,follow — не индексировать, ссылки учитывать</option>
@@ -177,126 +146,118 @@
                     </div>
                 </div>
 
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Канонический адрес</label>
-                    <input type="text" name="canonical" value="{{ row.canonical ?? '' }}"
-                           placeholder="{{ result.meta.canonical }}"
-                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                    <p class="mt-1 text-xs text-gray-500">Пусто — берётся адрес страницы. Нужен, когда одну страницу открывают по нескольким адресам.</p>
+                <div class="seo-field">
+                    <div class="seo-field__top">
+                        <span class="seo-field__label">Канонический адрес</span>
+                    </div>
+                    <input type="text" name="canonical" value="{{ row.canonical ?? '' }}" placeholder="{{ result.meta.canonical }}">
+                    <p class="seo-field__hint">Пусто — берётся адрес страницы. Нужен, когда одну страницу открывают по нескольким адресам.</p>
                 </div>
 
-                <details class="border-t pt-4">
-                    <summary class="text-sm font-medium text-gray-700 cursor-pointer">Соцсети и Open Graph</summary>
-                    <div class="mt-3 space-y-3">
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">og:title</label>
-                            <input type="text" name="og_title" value="{{ row.og_title ?? '' }}" placeholder="как в SEO-заголовке"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                <details class="seo-field" style="border-top:1px solid #e5e7eb;padding-top:16px;">
+                    <summary class="seo-field__label" style="cursor:pointer;">Соцсети и Open Graph</summary>
+                    <div style="margin-top:12px;">
+                        <div class="seo-field">
+                            <span class="seo-field__label">og:title</span>
+                            <input type="text" name="og_title" value="{{ row.og_title ?? '' }}" placeholder="как в SEO-заголовке">
                         </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">og:description</label>
-                            <textarea name="og_description" rows="2" placeholder="как в описании"
-                                      class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">{{ row.og_description ?? '' }}</textarea>
+                        <div class="seo-field">
+                            <span class="seo-field__label">og:description</span>
+                            <textarea name="og_description" rows="2" placeholder="как в описании">{{ row.og_description ?? '' }}</textarea>
                         </div>
-                        <div>
-                            <label class="block text-xs font-medium text-gray-600 mb-1">og:image</label>
-                            <input type="text" name="og_image" value="{{ row.og_image ?? '' }}" placeholder="{{ result.meta.image }}"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
-                            <p class="mt-1 text-xs text-gray-500">Путь от корня или полный URL. Пусто — картинка страницы, затем общая из настроек плагина.</p>
+                        <div class="seo-field">
+                            <span class="seo-field__label">og:image</span>
+                            <input type="text" name="og_image" value="{{ row.og_image ?? '' }}" placeholder="{{ result.meta.image }}">
+                            <p class="seo-field__hint">Путь от корня или полный URL. Пусто — картинка страницы, затем общая из настроек плагина.</p>
                         </div>
                     </div>
                 </details>
 
-                <div class="flex flex-wrap items-center gap-2 pt-2 border-t">
-                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
-                        <i class="fas fa-check mr-1"></i> Сохранить
-                    </button>
+                <div class="seo-actions">
+                    <button type="submit" class="seo-btn seo-btn--primary">{{ icons.icon('check') }} Сохранить</button>
                     <button type="submit" name="reset" value="1"
                             onclick="return confirm('Снять SEO-поля и вернуть значения из контента?')"
-                            class="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
-                        Сбросить к контенту
-                    </button>
-                    <a href="{{ doc.url }}" target="_blank" rel="noopener"
-                       class="px-4 py-2 text-sm text-gray-600 hover:text-blue-600">Открыть страницу</a>
-                    <span class="text-xs text-gray-400 ml-auto">Оценка пересчитывается при сохранении</span>
+                            class="seo-btn">Сбросить к контенту</button>
+                    <a href="{{ doc.url }}" target="_blank" rel="noopener" class="seo-btn seo-btn--link">Открыть страницу</a>
+                    <span class="seo-actions__note">Оценка пересчитывается при сохранении</span>
                 </div>
             </form>
 
             <!-- Превью выдачи -->
-            <div class="bg-white rounded-lg border p-5">
-                <p class="text-xs uppercase tracking-wide text-gray-500 mb-3">Как это выглядит в поиске</p>
-                <div class="max-w-xl">
-                    <div class="text-xs text-gray-600 mb-0.5">{% if doc.updated_at %}{{ doc.updated_at|date('d.m.Y') }} — {% endif %}{{ doc.url }}</div>
-                    <div id="preview-title" class="text-lg text-blue-800 leading-snug hover:underline cursor-pointer">{{ result.meta.display_title ?: doc.title }}</div>
-                    <div id="preview-desc" class="text-sm text-gray-700 mt-1 leading-snug">{{ result.meta.description ?: 'Описание не задано — поисковик соберёт его сам.' }}</div>
+            <div class="seo-card">
+                <p class="seo-card__label">Как это выглядит в поиске</p>
+                <div class="seo-snippet">
+                    <div class="seo-snippet__url">{% if doc.updated_at %}{{ doc.updated_at|date('d.m.Y') }} — {% endif %}{{ doc.url }}</div>
+                    <div id="preview-title" class="seo-snippet__title">{{ result.meta.display_title ?: doc.title }}</div>
+                    <div id="preview-desc" class="seo-snippet__desc">{{ result.meta.description ?: 'Описание не задано — поисковик соберёт его сам.' }}</div>
                 </div>
             </div>
 
-            <div class="bg-white rounded-lg border p-5">
-                <p class="text-xs uppercase tracking-wide text-gray-500 mb-3">Текст страницы</p>
-                <p class="text-sm text-gray-700">{{ result.stats.words }} слов</p>
+            <div class="seo-card">
+                <p class="seo-card__label">Текст страницы</p>
+                <p class="seo-small">{{ result.stats.words }} слов</p>
                 {% if result.stats.words == 0 %}
-                <p class="text-xs text-amber-700 mt-2">Текст не найден: проверки объёма, H1 и плотности не считаются.</p>
+                <p class="seo-field__hint seo-field__hint--warn">Текст не найден: проверки объёма, H1 и плотности не считаются.</p>
                 {% endif %}
             </div>
         </div>
 
         <!-- Оценка и чек-лист -->
-        <div class="space-y-4">
-            <div class="bg-white rounded-lg border p-5 text-center">
-                <p class="text-xs uppercase tracking-wide text-gray-500 mb-2">Оценка страницы</p>
+        <div class="seo-stack">
+            <div class="seo-card seo-card--center">
+                <p class="seo-card__label">Оценка страницы</p>
                 {% set score = result.score %}
-                {% set color = result.level == 'ok' ? 'text-green-600' : (result.level == 'warn' ? 'text-amber-600' : 'text-red-600') %}
-                {% set ring = result.level == 'ok' ? '#16a34a' : (result.level == 'warn' ? '#d97706' : '#dc2626') %}
-                <div class="relative inline-flex items-center justify-center">
-                    <svg width="112" height="112" viewBox="0 0 112 112">
-                        <circle cx="56" cy="56" r="48" fill="none" stroke="#e5e7eb" stroke-width="10"></circle>
-                        <circle cx="56" cy="56" r="48" fill="none" stroke="{{ ring }}" stroke-width="10"
-                                stroke-linecap="round" stroke-dasharray="{{ (score * 301 / 100)|round(1) }} 301"
-                                transform="rotate(-90 56 56)"></circle>
+                {% set level = result.level %}
+                {% set ring = level == 'ok' ? '#16a34a' : (level == 'warn' ? '#d97706' : '#dc2626') %}
+                <div class="seo-score">
+                    <svg width="116" height="116" viewBox="0 0 116 116" aria-hidden="true">
+                        <circle cx="58" cy="58" r="50" fill="none" stroke="#e5e7eb" stroke-width="10"></circle>
+                        <circle cx="58" cy="58" r="50" fill="none" stroke="{{ ring }}" stroke-width="10"
+                                stroke-linecap="round" stroke-dasharray="{{ (score * 314 / 100)|round(1) }} 314"
+                                transform="rotate(-90 58 58)"></circle>
                     </svg>
-                    <span class="absolute text-3xl font-bold {{ color }}">{{ score }}</span>
+                    <span class="seo-score__value seo-score__value--{{ level }}">{{ score }}</span>
                 </div>
-                <p class="text-xs text-gray-500 mt-2">
-                    {{ result.problems }} пункт(ов) требуют внимания
-                </p>
-                <p class="text-xs text-gray-500 mt-1">
+                <p class="seo-score__summary">{{ result.problems }} пункт(ов) требуют внимания</p>
+                <p class="seo-score__summary">
                     {{ result.stats.words }} слов · H1: {{ result.stats.h1 }} ·
                     {% if result.stats.keyword_density is not null %}плотность {{ result.stats.keyword_density }}%{% else %}фраза не задана{% endif %}
                 </p>
             </div>
 
-            <div class="bg-white rounded-lg border">
-                <div class="px-4 py-3 border-b text-xs uppercase tracking-wide text-gray-500">Чек-лист</div>
-                <ul class="divide-y divide-gray-100 text-sm">
+            <div class="seo-card seo-card--flush">
+                <div class="seo-card__head">Чек-лист</div>
+                <div>
                     {% for check in result.checks %}
                     {% if check.status != 'na' %}
-                    {% set icon = check.status == 'ok' ? '<i class="fas fa-circle-check text-green-600"></i>'
-                        : (check.status == 'warn' ? '<i class="fas fa-triangle-exclamation text-amber-500"></i>'
-                        : '<i class="fas fa-circle-xmark text-red-600"></i>') %}
-                    <li class="px-4 py-2.5 flex items-start gap-2">
-                        <span class="mt-0.5">{{ icon|raw }}</span>
+                    <div class="seo-check">
+                        <span class="seo-check__icon seo-check__icon--{{ check.status }}">
+                            {% if check.status == 'ok' %}{{ icons.icon('check-circle') }}
+                            {% elseif check.status == 'warn' %}{{ icons.icon('alert-triangle') }}
+                            {% else %}{{ icons.icon('x-circle') }}{% endif %}
+                        </span>
                         <div>
-                            <p class="text-gray-800 leading-snug">{{ check.label }}</p>
-                            <p class="text-xs text-gray-500 mt-0.5">{{ check.message }}</p>
+                            <p class="seo-check__label">{{ check.label }}</p>
+                            <p class="seo-check__message">{{ check.message }}</p>
                             {% if check.status != 'ok' %}
-                            <p class="text-xs text-gray-400 mt-0.5">{{ check.hint }}</p>
+                            <p class="seo-check__hint">{{ check.hint }}</p>
                             {% endif %}
                         </div>
-                    </li>
+                    </div>
                     {% endif %}
                     {% endfor %}
-                </ul>
+                </div>
             </div>
 
-            <div class="bg-white rounded-lg border p-4 text-xs text-gray-500">
-                <p class="font-medium text-gray-700 mb-1">Канонический адрес</p>
-                <p class="break-all">{{ result.meta.canonical }}</p>
-                <p class="font-medium text-gray-700 mt-3 mb-1">Картинка для соцсетей</p>
-                <p class="break-all">{{ result.meta.image ?: 'не задана' }}</p>
+            <div class="seo-card">
+                <p class="seo-field__label">Канонический адрес</p>
+                <p class="seo-small seo-break seo-muted" style="margin-top:4px;">{{ result.meta.canonical }}</p>
+                <p class="seo-field__label" style="margin-top:14px;">Картинка для соцсетей</p>
+                <p class="seo-small seo-break seo-muted" style="margin-top:4px;">{{ result.meta.image ?: 'не задана' }}</p>
             </div>
         </div>
     </div>
+</div>
 </div>
 
 <script>
@@ -312,15 +273,32 @@
     var contentDesc = {{ (result.meta.description ?: '')|json_encode|raw }};
     var aiKey = {{ key|json_encode|raw }};
 
+    // Счётчик показывает то, что реально уйдёт на сайт. Пустое поле — значит
+    // работает значение из контента: показываем его длину серым и подписываем,
+    // иначе «0 символов» красным рядом с чек-листом «описание задано»
+    // выглядят как противоречие.
     function refresh() {
         var t = title.value.trim();
         var d = desc.value.trim();
-        titleCount.textContent = t.length;
-        descCount.textContent = d.length;
-        titleCount.style.color = (t.length < 30 || t.length > 65) ? '#dc2626' : '#16a34a';
-        descCount.style.color = (d.length < 70 || d.length > 170) ? '#dc2626' : '#16a34a';
+
+        setCount(titleCount, t, contentTitle, 30, 65);
+        setCount(descCount, d, contentDesc, 70, 170);
+
         previewTitle.textContent = t || contentTitle;
         previewDesc.textContent = d || contentDesc || 'Описание не задано — поисковик соберёт его сам.';
+    }
+
+    function setCount(el, own, fromContent, min, max) {
+        var value = own !== '' ? own : fromContent;
+        var fromContentNote = own === '' && value !== '';
+
+        el.textContent = value.length + (fromContentNote ? ' (из контента)' : '');
+        if (fromContentNote) {
+            el.parentNode.className = 'seo-field__count seo-faint';
+            return;
+        }
+        el.parentNode.className = 'seo-field__count '
+            + (value.length < min || value.length > max ? 'is-bad' : 'is-good');
     }
 
     [title, desc].forEach(function (el) { el.addEventListener('input', refresh); });
@@ -334,13 +312,13 @@
 
     function setBusy(busy, label) {
         runButtons.forEach(function (b) { b.disabled = busy; });
-        if (!status) return;
         if (busy) {
-            status.classList.remove('hidden');
+            status.hidden = false;
+            status.classList.remove('is-error');
             status.textContent = label || 'Думаю…';
         } else {
+            status.hidden = true;
             status.textContent = '';
-            status.classList.add('hidden');
         }
     }
 
@@ -350,12 +328,12 @@
         if (!box || !out) return;
         pending[field] = text;
         out.textContent = text;
-        box.classList.remove('hidden');
+        box.hidden = false;
     }
 
     function hideSuggestion(field) {
         var box = document.getElementById('sug-' + field);
-        if (box) box.classList.add('hidden');
+        if (box) box.hidden = true;
     }
 
     function showKeywords(list) {
@@ -366,15 +344,15 @@
         list.forEach(function (phrase) {
             var b = document.createElement('button');
             b.type = 'button';
-            b.className = 'px-2.5 py-1 bg-white border border-indigo-300 text-indigo-800 rounded text-xs hover:bg-indigo-100';
+            b.className = 'seo-chip';
             b.textContent = phrase;
             b.addEventListener('click', function () {
                 keyword.value = phrase;
-                box.classList.add('hidden');
+                box.hidden = true;
             });
             holder.appendChild(b);
         });
-        box.classList.remove('hidden');
+        box.hidden = false;
     }
 
     document.querySelectorAll('[data-ai]').forEach(function (btn) {
@@ -394,7 +372,8 @@
             }).then(function (r) { return r.json(); }).then(function (data) {
                 setBusy(false);
                 if (!data.ok) {
-                    status.classList.remove('hidden');
+                    status.hidden = false;
+                    status.classList.add('is-error');
                     status.textContent = 'Не получилось: ' + (data.error || 'неизвестная ошибка');
                     return;
                 }
@@ -405,7 +384,8 @@
                 else if (d.focus_keyword) showKeywords([d.focus_keyword]);
             }).catch(function (e) {
                 setBusy(false);
-                status.classList.remove('hidden');
+                status.hidden = false;
+                status.classList.add('is-error');
                 status.textContent = 'Ошибка сети: ' + e.message;
             });
         });

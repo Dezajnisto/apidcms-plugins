@@ -4,65 +4,67 @@
 {% block page_title %}SEO — ошибки 404{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6">
+{% include '@seo/_styles.twig' %}
+{% import '@seo/_icons.twig' as icons %}
+<div class="seo-admin">
+<div class="seo-wrap">
 
     {% if flash %}
-    <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ flash.type == 'error' ? 'border-red-300 bg-red-50 text-red-800' : 'border-green-300 bg-green-50 text-green-800' }}">
-        {{ flash.message }}
-    </div>
+    <div class="seo-flash {{ flash.type == 'error' ? 'seo-flash--error' : 'seo-flash--ok' }}">{{ flash.message }}</div>
     {% endif %}
 
-    <div class="flex items-center gap-3 mb-5 text-sm">
-        <a href="{{ admin_url('seo') }}" class="text-gray-500 hover:text-blue-600">
-            <i class="fas fa-arrow-left mr-1"></i> к обзору
-        </a>
-        <a href="{{ admin_url('seo/redirects') }}" class="text-blue-600 hover:underline">редиректы</a>
+    <div class="seo-toolbar">
+        <div class="seo-toolbar__group">
+            <a href="{{ admin_url('seo') }}" class="seo-btn seo-btn--link">{{ icons.icon('arrow-left') }} к обзору</a>
+            <a href="{{ admin_url('seo/redirects') }}" class="seo-link seo-small">редиректы</a>
+        </div>
     </div>
 
-    <div class="bg-white rounded-lg border overflow-hidden">
-        <div class="px-4 py-3 border-b text-xs uppercase tracking-wide text-gray-500 flex items-center justify-between">
+    <div class="seo-card seo-card--flush">
+        <div class="seo-card__head">
             <span>Адреса, которых нет (топ по обращениям)</span>
-            <span class="text-gray-400 normal-case">рекомендуемый адрес — предположение по похожести, проверяйте глазами</span>
+            <span style="text-transform:none;letter-spacing:0;">рекомендуемый адрес — предположение по похожести, проверяйте глазами</span>
         </div>
         {% if rows is empty %}
-        <div class="p-10 text-center text-gray-500 text-sm">
-            <i class="fas fa-check text-3xl text-green-300 mb-2 block"></i>
-            Хорошая новость: 404 не приходили с момента установки плагина.
+        <div class="seo-empty">
+            {{ icons.icon('check-circle', 28) }}
+            <p>Хорошая новость: 404 не приходили с момента установки плагина.</p>
         </div>
         {% else %}
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-gray-50 text-gray-600">
+        <table class="seo-table">
+            <thead>
                 <tr>
-                    <th class="px-4 py-2.5 text-left font-medium">Адрес</th>
-                    <th class="px-4 py-2.5 text-right font-medium w-28">Обращений</th>
-                    <th class="px-4 py-2.5 text-left font-medium w-56">Последний раз</th>
-                    <th class="px-4 py-2.5 text-left font-medium">Куда перенаправить</th>
-                    <th class="px-4 py-2.5 w-10"></th>
+                    <th>Адрес</th>
+                    <th class="seo-table__num" style="width:110px;">Обращений</th>
+                    <th style="width:170px;">Последний раз</th>
+                    <th style="width:260px;">Куда перенаправить</th>
+                    <th style="width:44px;"></th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody>
                 {% for row in rows %}
-                <tr class="hover:bg-gray-50 align-top">
-                    <td class="px-4 py-2.5 font-mono text-xs text-gray-800">{{ row.path }}</td>
-                    <td class="px-4 py-2.5 text-right text-xs {{ row.hits > 1 ? 'font-medium text-gray-800' : 'text-gray-500' }}">{{ row.hits }}</td>
-                    <td class="px-4 py-2.5 text-xs text-gray-500">{{ row.last_seen }}</td>
-                    <td class="px-4 py-2.5">
+                <tr>
+                    <td class="seo-table__mono">{{ row.path }}</td>
+                    <td class="seo-table__num">
+                        <span class="seo-badge {{ row.hits > 1 ? 'seo-badge--warn' : 'seo-badge--none' }}">{{ row.hits }}</span>
+                    </td>
+                    <td class="seo-small seo-muted">{{ row.last_seen }}</td>
+                    <td>
                         {% if row.suggest %}
-                        <form method="post" action="{{ admin_url('seo/redirects/save') }}" class="flex items-center gap-1">
+                        <form method="post" action="{{ admin_url('seo/redirects/save') }}" class="seo-toolbar__group" style="gap:6px;">
                             <input type="hidden" name="from_path" value="{{ row.path }}">
-                            <input type="text" name="to_path" value="{{ row.suggest }}"
-                                   class="px-2 py-1 border border-gray-300 rounded text-xs font-mono w-40">
-                            <button type="submit" class="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700">301</button>
+                            <input type="text" name="to_path" value="{{ row.suggest }}" class="seo-mono seo-small" style="width:170px;">
+                            <button type="submit" class="seo-btn seo-btn--primary seo-btn--sm">301</button>
                         </form>
                         {% else %}
-                        <span class="text-xs text-gray-400">похожих адресов нет</span>
+                        <span class="seo-small seo-faint">похожих адресов нет</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-2.5 text-right">
+                    <td style="text-align:right;">
                         <form method="post" action="{{ admin_url('seo/notfound/delete/' ~ row.id) }}"
                               onsubmit="return confirm('Удалить запись из журнала?')">
-                            <button type="submit" class="text-gray-400 hover:text-red-600">
-                                <i class="fas fa-trash"></i>
+                            <button type="submit" class="seo-btn seo-btn--icon seo-btn--danger" title="Удалить">
+                                {{ icons.icon('trash') }}
                             </button>
                         </form>
                     </td>
@@ -73,9 +75,13 @@
         {% endif %}
     </div>
 
-    <p class="mt-4 text-xs text-gray-500">
-        Журнал ведётся на страницах ошибки. Технические адреса (файлы стилей, картинки, /admin) в него не попадают,
-        чтобы отчёт не утонул в мусоре. Устаревшие записи удаляются кнопкой — журнал не чистится автоматически.
-    </p>
+    <div class="seo-card" style="margin-top:16px;">
+        <p class="seo-small seo-muted">
+            Журнал ведётся на страницах ошибки. Технические адреса (файлы стилей, картинки, /admin)
+            в него не попадают, чтобы отчёт не утонул в мусоре. Записи не чистятся автоматически —
+            удаляйте их кнопкой.
+        </p>
+    </div>
+</div>
 </div>
 {% endblock %}

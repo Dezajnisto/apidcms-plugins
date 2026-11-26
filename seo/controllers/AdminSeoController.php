@@ -15,12 +15,14 @@ class AdminSeoController extends \Admin\BaseController
     private Inventory $inventory;
     private Analyzer $analyzer;
     private Store $store;
+    private Settings $settings;
 
     public function __construct($app)
     {
         parent::__construct($app);
+        $this->settings = new Settings();
         $this->inventory = new Inventory($this->db);
-        $this->analyzer = new Analyzer(new Settings());
+        $this->analyzer = new Analyzer($this->settings);
         $this->store = new Store($this->db);
     }
 
@@ -68,6 +70,11 @@ class AdminSeoController extends \Admin\BaseController
                 }
             }
 
+            // Что реально уходит на сайт и откуда взялось. «Пусто» в колонке
+            // описания при заполненной колонке content — ложь: посетитель
+            // видит текст из контента, а не пустой тег.
+            $effective = Meta::effective($doc, $row, $this->settings);
+
             $rows[] = [
                 'key' => $doc['key'],
                 'url' => $doc['url'],
@@ -79,7 +86,9 @@ class AdminSeoController extends \Admin\BaseController
                 'level' => $score === null ? 'none' : Analyzer::level($score),
                 'checked_at' => $row['checked_at'] ?? null,
                 'focus_keyword' => $row['focus_keyword'] ?? '',
-                'description' => $row['description'] ?? '',
+                'description' => (string) ($effective['description'] ?? ''),
+                'description_own' => trim((string) ($row['description'] ?? '')) !== '',
+                'title_own' => trim((string) ($row['title'] ?? '')) !== '',
             ];
         }
 

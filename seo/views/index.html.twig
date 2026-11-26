@@ -4,56 +4,56 @@
 {% block page_title %}SEO — здоровье сайта{% endblock %}
 
 {% block content %}
-<div class="container mx-auto px-4 py-6">
+{% include '@seo/_styles.twig' %}
+{% import '@seo/_icons.twig' as icons %}
+<div class="seo-admin">
+<div class="seo-wrap">
 
     {% if flash %}
-    <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ flash.type == 'error' ? 'border-red-300 bg-red-50 text-red-800' : 'border-green-300 bg-green-50 text-green-800' }}">
-        {{ flash.message }}
-    </div>
+    <div class="seo-flash {{ flash.type == 'error' ? 'seo-flash--error' : 'seo-flash--ok' }}">{{ flash.message }}</div>
     {% endif %}
 
     {% if not ai_ready %}
-    <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-        <span class="font-semibold">Кнопка «Сгенерировать» недоступна:</span>
-        не задан ключ DeepSeek. Его берут из
-        <a href="{{ admin_url('settings') }}#ai" class="underline">настроек AI</a>.
+    <div class="seo-notice">
+        <strong>Генерация недоступна:</strong> не задан ключ DeepSeek. Его берут из
+        <a href="{{ admin_url('settings') }}" class="seo-link">настроек AI</a>.
         Остальные проверки работают без ключа.
     </div>
     {% endif %}
 
     {% set sitemap_on = settings_obj.bool('sitemap_enabled', true) %}
 
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div class="bg-white rounded-lg border p-4">
-            <p class="text-xs uppercase tracking-wide text-gray-500">Средняя оценка</p>
-            <p class="text-3xl font-bold mt-1 {{ avg is null ? 'text-gray-400' : (avg >= 80 ? 'text-green-600' : (avg >= 60 ? 'text-amber-600' : 'text-red-600')) }}">
+    <div class="seo-stats">
+        <div class="seo-card">
+            <p class="seo-stat__label">Средняя оценка</p>
+            <p class="seo-stat__value {{ avg is null ? 'seo-stat__value--none' : (avg >= 80 ? 'seo-stat__value--good' : (avg >= 60 ? 'seo-stat__value--warn' : 'seo-stat__value--bad')) }}">
                 {{ avg is null ? '—' : avg }}
             </p>
-            <p class="text-xs text-gray-500 mt-1">по проверенным страницам</p>
+            <p class="seo-stat__hint">по проверенным страницам</p>
         </div>
-        <div class="bg-white rounded-lg border p-4">
-            <p class="text-xs uppercase tracking-wide text-gray-500">Страниц в обходе</p>
-            <p class="text-3xl font-bold mt-1 text-gray-800">{{ counts.all }}</p>
-            <p class="text-xs text-gray-500 mt-1">проверено: {{ counts.all - counts.unchecked }}</p>
+        <div class="seo-card">
+            <p class="seo-stat__label">Страниц в обходе</p>
+            <p class="seo-stat__value">{{ counts.all }}</p>
+            <p class="seo-stat__hint">проверено: {{ counts.all - counts.unchecked }}</p>
         </div>
-        <div class="bg-white rounded-lg border p-4">
-            <p class="text-xs uppercase tracking-wide text-gray-500">Требуют работы</p>
-            <p class="text-3xl font-bold mt-1 text-red-600">{{ counts.problems }}</p>
-            <p class="text-xs text-gray-500 mt-1">оценка ниже 60</p>
+        <div class="seo-card">
+            <p class="seo-stat__label">Требуют работы</p>
+            <p class="seo-stat__value seo-stat__value--bad">{{ counts.problems }}</p>
+            <p class="seo-stat__hint">оценка ниже 60</p>
         </div>
-        <div class="bg-white rounded-lg border p-4">
-            <p class="text-xs uppercase tracking-wide text-gray-500">Редиректы / 404</p>
-            <p class="text-3xl font-bold mt-1 text-gray-800">{{ redirects_count }} <span class="text-gray-300">/</span> {{ notfound_count }}</p>
-            <p class="text-xs mt-1">
-                <a href="{{ admin_url('seo/redirects') }}" class="text-blue-600 hover:underline">редиректы</a>
-                <span class="text-gray-300">·</span>
-                <a href="{{ admin_url('seo/notfound') }}" class="text-blue-600 hover:underline">ошибки</a>
+        <div class="seo-card">
+            <p class="seo-stat__label">Редиректы / 404</p>
+            <p class="seo-stat__value">{{ redirects_count }} <span class="seo-faint">/</span> {{ notfound_count }}</p>
+            <p class="seo-stat__hint">
+                <a href="{{ admin_url('seo/redirects') }}" class="seo-link">редиректы</a>
+                <span class="seo-faint">·</span>
+                <a href="{{ admin_url('seo/notfound') }}" class="seo-link">ошибки</a>
             </p>
         </div>
     </div>
 
-    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <div class="flex flex-wrap items-center gap-2">
+    <div class="seo-toolbar">
+        <div class="seo-tabs">
             {% for key, label in {
                 'all': 'Все (' ~ counts.all ~ ')',
                 'problems': 'Требуют работы (' ~ counts.problems ~ ')',
@@ -61,102 +61,96 @@
                 'good': 'Хорошо (' ~ counts.good ~ ')'
             } %}
             <a href="{{ admin_url('seo') }}?filter={{ key }}{% if search %}&q={{ search|url_encode }}{% endif %}"
-               class="px-3 py-1.5 rounded-md text-sm border {{ filter == key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
-                {{ label }}
-            </a>
+               class="seo-tab {{ filter == key ? 'is-active' : '' }}">{{ label }}</a>
             {% endfor %}
         </div>
 
-        <div class="flex flex-wrap items-center gap-2">
-            <form method="get" action="{{ admin_url('seo') }}" class="flex items-center gap-2">
+        <div class="seo-toolbar__group">
+            <form method="get" action="{{ admin_url('seo') }}" class="seo-toolbar__group">
                 <input type="hidden" name="filter" value="{{ filter }}">
-                <input type="text" name="q" value="{{ search }}" placeholder="адрес, заголовок, фраза"
-                       class="px-3 py-1.5 border border-gray-300 rounded-md text-sm w-56">
-                <button type="submit" class="px-3 py-1.5 bg-gray-800 text-white rounded-md text-sm">Найти</button>
+                <input type="text" name="q" value="{{ search }}" placeholder="адрес, заголовок, фраза" style="width:220px;">
+                <button type="submit" class="seo-btn seo-btn--sm">Найти</button>
             </form>
 
-            <button type="button" id="scan-btn"
-                    class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
-                <i class="fas fa-stethoscope mr-1"></i> Проверить сайт
+            <button type="button" id="scan-btn" class="seo-btn seo-btn--primary seo-btn--sm">
+                {{ icons.icon('stethoscope') }} Проверить сайт
             </button>
 
             <form method="post" action="{{ admin_url('seo/sitemap/rebuild') }}">
-                <button type="submit" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
-                    <i class="fas fa-sync mr-1"></i> Пересобрать sitemap
-                </button>
+                <button type="submit" class="seo-btn seo-btn--sm">{{ icons.icon('refresh') }} Пересобрать sitemap</button>
             </form>
 
-            <a href="/sitemap.xml" target="_blank" rel="noopener"
-               class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 {{ sitemap_on ? '' : 'opacity-50 pointer-events-none' }}">
-                <i class="fas fa-external-link-alt mr-1"></i> /sitemap.xml
+            <a href="/sitemap.xml" target="_blank" rel="noopener" class="seo-btn seo-btn--sm"
+               {% if not sitemap_on %}style="opacity:.5;pointer-events:none;"{% endif %}>
+                {{ icons.icon('external-link') }} /sitemap.xml
             </a>
         </div>
     </div>
 
-    <div id="scan-progress" class="hidden mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-        <div class="flex items-center justify-between mb-2">
+    <div id="scan-progress" class="seo-progress" hidden>
+        <div class="seo-progress__top">
             <span id="scan-text">Проверяю страницы…</span>
-            <span id="scan-counter" class="font-mono text-xs"></span>
+            <span id="scan-counter" class="seo-progress__counter"></span>
         </div>
-        <div class="h-2 bg-blue-100 rounded overflow-hidden">
-            <div id="scan-bar" class="h-2 bg-blue-600 transition-all" style="width:0%"></div>
-        </div>
+        <div class="seo-progress__track"><div id="scan-bar" class="seo-progress__bar"></div></div>
     </div>
 
-    <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
+    <div class="seo-card seo-card--flush">
         {% if rows is empty %}
-        <div class="p-12 text-center text-gray-500">
-            <i class="fas fa-magnifying-glass-chart text-4xl mb-3 block text-gray-300"></i>
+        <div class="seo-empty">
+            {{ icons.icon('chart') }}
             <p>Нет страниц под этот фильтр</p>
-            <p class="text-sm mt-1">Проверьте сайт кнопкой «Проверить сайт» — оценки появятся здесь.</p>
+            <p>Проверьте сайт кнопкой «Проверить сайт» — оценки появятся здесь.</p>
         </div>
         {% else %}
-        <table class="min-w-full divide-y divide-gray-200 text-sm">
-            <thead class="bg-gray-50 text-gray-600">
+        <table class="seo-table">
+            <thead>
                 <tr>
-                    <th class="px-4 py-3 text-left font-medium w-20">Оценка</th>
-                    <th class="px-4 py-3 text-left font-medium">Страница</th>
-                    <th class="px-4 py-3 text-left font-medium w-48">Ключевая фраза</th>
-                    <th class="px-4 py-3 text-left font-medium w-64">Описание</th>
-                    <th class="px-4 py-3 w-10"></th>
+                    <th style="width:80px;">Оценка</th>
+                    <th>Страница</th>
+                    <th style="width:180px;">Ключевая фраза</th>
+                    <th style="width:240px;">Описание</th>
+                    <th style="width:44px;"></th>
                 </tr>
             </thead>
-            <tbody class="divide-y divide-gray-100">
+            <tbody>
                 {% for row in rows %}
-                {% set badge = row.score is null ? 'bg-gray-100 text-gray-500'
-                    : (row.level == 'ok' ? 'bg-green-100 text-green-700'
-                    : (row.level == 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')) %}
-                <tr class="hover:bg-gray-50">
-                    <td class="px-4 py-3">
-                        <span class="inline-flex items-center justify-center w-11 h-7 rounded-md text-xs font-bold {{ badge }}">
-                            {{ row.score is null ? '—' : row.score }}
-                        </span>
+                <tr>
+                    <td>
+                        <span class="seo-badge seo-badge--{{ row.level }}">{{ row.score is null ? '—' : row.score }}</span>
                     </td>
-                    <td class="px-4 py-3">
-                        <a href="{{ admin_url('seo/edit') }}?key={{ row.key|url_encode }}" class="font-medium text-gray-900 hover:text-blue-600">
+                    <td>
+                        <a href="{{ admin_url('seo/edit') }}?key={{ row.key|url_encode }}" class="seo-link">
                             {{ row.title is not empty ? row.title : '(без заголовка)' }}
                         </a>
-                        <div class="text-xs text-gray-500 mt-0.5">
+                        <div class="seo-small seo-faint" style="margin-top:2px;">
                             {{ row.type == 'record' ? row.table ~ ' · ' : '' }}/{{ row.url|trim('/') }}
+                            {% if row.title_own %}<span class="seo-kw" style="font-size:11px;">свой заголовок</span>{% endif %}
                         </div>
                     </td>
-                    <td class="px-4 py-3 text-xs">
+                    <td class="seo-small">
                         {% if row.focus_keyword %}
-                            <span class="px-2 py-0.5 bg-gray-100 rounded text-gray-700">{{ row.focus_keyword }}</span>
+                            <span class="seo-kw">{{ row.focus_keyword }}</span>
                         {% else %}
-                            <span class="text-gray-400">не выбрана</span>
+                            <span class="seo-faint">не выбрана</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3 text-xs text-gray-600">
+                    <td class="seo-small">
                         {% if row.description %}
-                            {{ row.description|slice(0, 80) }}{{ row.description|length > 80 ? '…' }}
+                            <span class="{{ row.description_own ? '' : 'seo-faint' }}"
+                                  {% if not row.description_own %}title="Взято из контента страницы"{% endif %}>
+                                {{ row.description|slice(0, 80) }}{{ row.description|length > 80 ? '…' }}
+                            </span>
+                            {% if not row.description_own %}
+                            <span class="seo-faint" style="white-space:nowrap;"> · из контента</span>
+                            {% endif %}
                         {% else %}
-                            <span class="text-red-500">пусто</span>
+                            <span style="color:#dc2626;">пусто</span>
                         {% endif %}
                     </td>
-                    <td class="px-4 py-3 text-right">
-                        <a href="{{ admin_url('seo/edit') }}?key={{ row.key|url_encode }}" class="text-gray-400 hover:text-blue-600">
-                            <i class="fas fa-pen"></i>
+                    <td style="text-align:right;">
+                        <a href="{{ admin_url('seo/edit') }}?key={{ row.key|url_encode }}" class="seo-btn seo-btn--icon" title="Открыть">
+                            {{ icons.icon('pen') }}
                         </a>
                     </td>
                 </tr>
@@ -164,26 +158,26 @@
             </tbody>
         </table>
         {% if total_filtered > rows|length %}
-        <div class="px-4 py-3 text-xs text-gray-500 border-t">
+        <div class="seo-card__head" style="border-top:1px solid #e5e7eb;border-bottom:none;">
             Показано {{ rows|length }} из {{ total_filtered }}. Уточните поиск или используйте фильтры.
         </div>
         {% endif %}
         {% endif %}
     </div>
 
-    <div class="mt-4 rounded-lg border border-gray-200 bg-white px-4 py-3 text-xs text-gray-600">
-        <p>
-            <span class="font-medium text-gray-800">Оценка</span> считается по чек-листу из 20+ пунктов:
-            заголовок, описание, объём текста, H1, ключевая фраза и её плотность, alt у картинок,
-            читаемость адреса, картинка для соцсетей, noindex. Проверка офлайновая — сайт не тормозит,
-            интернет и токены не нужны.
+    <div class="seo-card" style="margin-top:16px;">
+        <p class="seo-small seo-muted">
+            <strong>Оценка</strong> считается по чек-листу из 20+ пунктов: заголовок, описание, объём текста,
+            H1, ключевая фраза и её плотность, alt у картинок, читаемость адреса, картинка для соцсетей,
+            noindex. Проверка офлайновая — сайт не тормозит, интернет и токены не нужны.
         </p>
-        <p class="mt-1.5">
-            <span class="font-medium text-gray-800">Заголовок, описание и ключевую фразу</span> можно
-            сгенерировать нейросетью: откройте страницу в этом списке — панель «Заполнить нейросетью»
-            вверху редактора. Результат сначала показывается предложением, ничего не перезаписывается молча.
+        <p class="seo-small seo-muted" style="margin-top:8px;">
+            <strong>Заголовок, описание и ключевую фразу</strong> можно сгенерировать нейросетью: откройте
+            страницу в списке — панель «Заполнить нейросетью» вверху редактора. Результат сначала
+            показывается предложением, ничего не перезаписывается молча.
         </p>
     </div>
+</div>
 </div>
 
 <script>
@@ -211,7 +205,7 @@
                 bar.style.width = percent + '%';
                 counter.textContent = data.done + ' / ' + data.total;
                 if (data.finished) {
-                    text.textContent = 'Готово — обновите страницу, чтобы увидеть оценки';
+                    text.textContent = 'Готово — обновляю страницу';
                     btn.disabled = false;
                     running = false;
                     setTimeout(function () { location.reload(); }, 900);
@@ -230,7 +224,7 @@
         if (running) return;
         running = true;
         btn.disabled = true;
-        box.classList.remove('hidden');
+        box.hidden = false;
         text.textContent = 'Проверяю страницы…';
         step(0);
     });

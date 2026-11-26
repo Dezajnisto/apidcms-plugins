@@ -327,11 +327,19 @@ class AdminSeoController extends \Admin\BaseController
             }
 
             $next = $offset + $scored;
+            $finished = $next >= $total || $scored === 0;
+
+            // Последняя порция: убираем строки, которых больше нет в контенте.
+            // Иначе после смены состава документов в отчёте навсегда остаются
+            // призраки — записи таблиц, которые перестали быть страницами.
+            $purged = $finished ? $this->purgeStale($light) : 0;
+
             echo json_encode([
                 'ok' => true,
                 'total' => $total,
                 'done' => $next,
-                'finished' => $next >= $total || $scored === 0,
+                'finished' => $finished,
+                'purged' => $purged,
             ], JSON_UNESCAPED_UNICODE);
         } catch (\Throwable $e) {
             echo json_encode(['ok' => false, 'error' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
@@ -460,6 +468,43 @@ class AdminSeoController extends \Admin\BaseController
     }
 
     // ===== Служебное =====
+
+    /**
+     * Удалить SEO-строки сущностей, которых больше нет в контенте.
+     *
+     * @param array<int, array<string,mixed>> $docs текущий состав документов
+     */
+    private function purgeStale(array $docs): int
+    {
+        try {
+            $this->db->exec('CREATE TEMP TABLE IF NOT EXISTS seo_live_keys (
+                entity_type TEXT, entity_table TEXT, entity_id INTEGER
+            )');
+            $this->db->exec('DELETE FROM seo_live_keys');
+
+            foreach ($docs as $doc) {
+                $this->db->query(
+                    'INSERT INTO seo_live_keys (entity_type, entity_table, entity_id) VALUES (?, ?, ?)',
+                    [(string) $doc['type'], (string) $doc['table'], (int) $doc['id']]
+                );
+            }
+
+            $before = $this->countRows('plugin_seo_meta');
+            $this->db->exec(
+                'DELETE FROM plugin_seo_meta WHERE NOT EXISTS (
+                    SELECT 1 FROM seo_live_keys k
+                     WHERE k.entity_type = plugin_seo_meta.entity_type
+                       AND k.entity_table = plugin_seo_meta.entity_table
+                       AND k.entity_id = plugin_seo_meta.entity_id
+                )'
+            );
+
+            return max(0, $before - $this->countRows('plugin_seo_meta'));
+        } catch (\Throwable $e) {
+            error_log('seo: очистка устаревших строк не удалась — ' . $e->getMessage());
+            return 0;
+        }
+    }
 
     private function countRows(string $table): int
     {

@@ -30,6 +30,49 @@
     </div>
     {% endif %}
 
+    <!-- Панель нейросети: видна сразу, ничего не прячет -->
+    <div class="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+            <div>
+                <p class="text-sm font-semibold text-indigo-900">
+                    <i class="fas fa-wand-magic-sparkles mr-1"></i> Заполнить нейросетью
+                </p>
+                <p class="text-xs text-indigo-700 mt-0.5">
+                    {% if ai_ready %}
+                    Пишет по тексту страницы. Результат сначала показывается как предложение —
+                    примените или отмените, ничего не перезаписывается молча.
+                    {% else %}
+                    Недоступно: не задан ключ DeepSeek в
+                    <a href="{{ admin_url('settings') }}" class="underline">настройках AI</a>.
+                    {% endif %}
+                </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+                <button type="button" data-ai="all"
+                        class="ai-run px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs hover:bg-indigo-700 disabled:opacity-50"
+                        {{ ai_ready ? '' : 'disabled' }}>
+                    Всё сразу
+                </button>
+                <button type="button" data-ai="title"
+                        class="ai-run px-3 py-1.5 bg-white text-indigo-700 border border-indigo-300 rounded-md text-xs hover:bg-indigo-100 disabled:opacity-50"
+                        {{ ai_ready ? '' : 'disabled' }}>
+                    Заголовок
+                </button>
+                <button type="button" data-ai="description"
+                        class="ai-run px-3 py-1.5 bg-white text-indigo-700 border border-indigo-300 rounded-md text-xs hover:bg-indigo-100 disabled:opacity-50"
+                        {{ ai_ready ? '' : 'disabled' }}>
+                    Описание
+                </button>
+                <button type="button" data-ai="keyword"
+                        class="ai-run px-3 py-1.5 bg-white text-indigo-700 border border-indigo-300 rounded-md text-xs hover:bg-indigo-100 disabled:opacity-50"
+                        {{ ai_ready ? '' : 'disabled' }}>
+                    Ключевые фразы
+                </button>
+            </div>
+        </div>
+        <p id="ai-status" class="text-xs text-indigo-700 mt-2 hidden"></p>
+    </div>
+
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         <!-- Поля -->
@@ -37,9 +80,17 @@
             <form method="post" action="{{ admin_url('seo/save') }}" class="bg-white rounded-lg border p-5 space-y-4">
                 <input type="hidden" name="key" value="{{ key }}">
 
+                <!-- Заголовок -->
                 <div>
                     <div class="flex items-center justify-between mb-1">
-                        <label class="text-sm font-medium text-gray-700">SEO-заголовок</label>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm font-medium text-gray-700">SEO-заголовок</label>
+                            <button type="button" data-ai="title" title="Сгенерировать заголовок"
+                                    class="ai-run text-indigo-500 hover:text-indigo-700 disabled:opacity-40"
+                                    {{ ai_ready ? '' : 'disabled' }}>
+                                <i class="fas fa-wand-magic-sparkles text-xs"></i>
+                            </button>
+                        </div>
                         <span class="text-xs text-gray-400">
                             <span id="title-count">0</span> символов · оптимально 30–65
                         </span>
@@ -48,40 +99,71 @@
                            placeholder="{{ doc.title }}"
                            class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
                     <p class="mt-1 text-xs text-gray-500">
-                        Пусто — на сайте работает заголовок из контента:
-                        «{{ result.meta.title }}»
+                        Пусто — на сайте работает заголовок из контента: «{{ result.meta.title }}»
                     </p>
+                    <div id="sug-title" class="hidden mt-2 rounded-md border border-indigo-200 bg-indigo-50 p-3">
+                        <p class="text-xs uppercase tracking-wide text-indigo-500 mb-1">Предложение нейросети</p>
+                        <p class="text-sm text-indigo-900" id="sug-title-text"></p>
+                        <div class="mt-2 flex items-center gap-2">
+                            <button type="button" data-apply="title"
+                                    class="px-2.5 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700">Применить</button>
+                            <button type="button" data-cancel="title"
+                                    class="px-2.5 py-1 border border-indigo-300 text-indigo-700 rounded text-xs hover:bg-indigo-100">Отменить</button>
+                        </div>
+                    </div>
                 </div>
 
+                <!-- Описание -->
                 <div>
                     <div class="flex items-center justify-between mb-1">
-                        <label class="text-sm font-medium text-gray-700">Описание (description)</label>
+                        <div class="flex items-center gap-2">
+                            <label class="text-sm font-medium text-gray-700">Описание (description)</label>
+                            <button type="button" data-ai="description" title="Сгенерировать описание"
+                                    class="ai-run text-indigo-500 hover:text-indigo-700 disabled:opacity-40"
+                                    {{ ai_ready ? '' : 'disabled' }}>
+                                <i class="fas fa-wand-magic-sparkles text-xs"></i>
+                            </button>
+                        </div>
                         <span class="text-xs text-gray-400">
                             <span id="desc-count">0</span> символов · оптимально 70–170
                         </span>
                     </div>
                     <textarea name="description" id="f-description" rows="3"
                               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">{{ row.description ?? '' }}</textarea>
-                    <div class="mt-2 flex items-start gap-2">
-                        <button type="button" id="ai-btn"
-                                class="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs hover:bg-indigo-700 disabled:opacity-50"
-                                {{ ai_ready ? '' : 'disabled title="Нужен ключ DeepSeek"' }}>
-                            <i class="fas fa-wand-magic-sparkles mr-1"></i> Сгенерировать заголовок и описание
-                        </button>
-                        {% if not has_content %}
-                        <span class="text-xs text-amber-700 mt-1.5">У страницы нет текста — модель будет опираться на заголовок и адрес.</span>
-                        {% endif %}
-                        <span id="ai-status" class="text-xs text-gray-500 mt-1.5"></span>
+                    {% if not has_content %}
+                    <p class="mt-1 text-xs text-amber-700">У страницы нет текста — модель будет опираться на заголовок и адрес.</p>
+                    {% endif %}
+                    <div id="sug-description" class="hidden mt-2 rounded-md border border-indigo-200 bg-indigo-50 p-3">
+                        <p class="text-xs uppercase tracking-wide text-indigo-500 mb-1">Предложение нейросети</p>
+                        <p class="text-sm text-indigo-900" id="sug-description-text"></p>
+                        <div class="mt-2 flex items-center gap-2">
+                            <button type="button" data-apply="description"
+                                    class="px-2.5 py-1 bg-indigo-600 text-white rounded text-xs hover:bg-indigo-700">Применить</button>
+                            <button type="button" data-cancel="description"
+                                    class="px-2.5 py-1 border border-indigo-300 text-indigo-700 rounded text-xs hover:bg-indigo-100">Отменить</button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Ключевая фраза -->
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Ключевая фраза</label>
+                        <div class="flex items-center gap-2 mb-1">
+                            <label class="text-sm font-medium text-gray-700">Ключевая фраза</label>
+                            <button type="button" data-ai="keyword" title="Предложить фразы"
+                                    class="ai-run text-indigo-500 hover:text-indigo-700 disabled:opacity-40"
+                                    {{ ai_ready ? '' : 'disabled' }}>
+                                <i class="fas fa-wand-magic-sparkles text-xs"></i>
+                            </button>
+                        </div>
                         <input type="text" name="focus_keyword" id="f-keyword" value="{{ row.focus_keyword ?? '' }}"
                                placeholder="например: ремонт квартир под ключ"
                                class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
                         <p class="mt-1 text-xs text-gray-500">По ней считаются позиция в заголовке, тексте, адресе и плотность.</p>
+                        <div id="sug-keyword" class="hidden mt-2 rounded-md border border-indigo-200 bg-indigo-50 p-3">
+                            <p class="text-xs uppercase tracking-wide text-indigo-500 mb-1">Варианты от нейросети — нажмите, чтобы выбрать</p>
+                            <div id="sug-keyword-list" class="flex flex-wrap gap-2"></div>
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Robots</label>
@@ -136,6 +218,7 @@
                     </button>
                     <a href="{{ doc.url }}" target="_blank" rel="noopener"
                        class="px-4 py-2 text-sm text-gray-600 hover:text-blue-600">Открыть страницу</a>
+                    <span class="text-xs text-gray-400 ml-auto">Оценка пересчитывается при сохранении</span>
                 </div>
             </form>
 
@@ -151,8 +234,7 @@
 
             <div class="bg-white rounded-lg border p-5">
                 <p class="text-xs uppercase tracking-wide text-gray-500 mb-3">Текст страницы</p>
-                <div class="text-sm text-gray-700 max-h-64 overflow-y-auto whitespace-pre-line">{{ result.stats.words }} слов
-                </div>
+                <p class="text-sm text-gray-700">{{ result.stats.words }} слов</p>
                 {% if result.stats.words == 0 %}
                 <p class="text-xs text-amber-700 mt-2">Текст не найден: проверки объёма, H1 и плотности не считаются.</p>
                 {% endif %}
@@ -228,6 +310,7 @@
     var previewDesc = document.getElementById('preview-desc');
     var contentTitle = {{ (result.meta.title ?: doc.title)|json_encode|raw }};
     var contentDesc = {{ (result.meta.description ?: '')|json_encode|raw }};
+    var aiKey = {{ key|json_encode|raw }};
 
     function refresh() {
         var t = title.value.trim();
@@ -243,36 +326,110 @@
     [title, desc].forEach(function (el) { el.addEventListener('input', refresh); });
     refresh();
 
-    var btn = document.getElementById('ai-btn');
+    // ===== Предложения нейросети =====
+
     var status = document.getElementById('ai-status');
-    if (!btn) return;
+    var runButtons = document.querySelectorAll('.ai-run');
+    var pending = {title: '', description: ''};
 
-    btn.addEventListener('click', function () {
-        btn.disabled = true;
-        status.textContent = 'Думаю…';
-        var body = new FormData();
-        body.append('key', {{ key|json_encode|raw }});
-        body.append('focus_keyword', keyword.value);
+    function setBusy(busy, label) {
+        runButtons.forEach(function (b) { b.disabled = busy; });
+        if (!status) return;
+        if (busy) {
+            status.classList.remove('hidden');
+            status.textContent = label || 'Думаю…';
+        } else {
+            status.textContent = '';
+            status.classList.add('hidden');
+        }
+    }
 
-        fetch('{{ admin_url('seo/generate') }}', {
-            method: 'POST',
-            credentials: 'same-origin',
-            body: body
-        }).then(function (r) { return r.json(); }).then(function (data) {
-            if (!data.ok) {
-                status.textContent = data.error || 'Не получилось';
-                btn.disabled = false;
-                return;
+    function showSuggestion(field, text) {
+        var box = document.getElementById('sug-' + field);
+        var out = document.getElementById('sug-' + field + '-text');
+        if (!box || !out) return;
+        pending[field] = text;
+        out.textContent = text;
+        box.classList.remove('hidden');
+    }
+
+    function hideSuggestion(field) {
+        var box = document.getElementById('sug-' + field);
+        if (box) box.classList.add('hidden');
+    }
+
+    function showKeywords(list) {
+        var box = document.getElementById('sug-keyword');
+        var holder = document.getElementById('sug-keyword-list');
+        if (!box || !holder) return;
+        holder.innerHTML = '';
+        list.forEach(function (phrase) {
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'px-2.5 py-1 bg-white border border-indigo-300 text-indigo-800 rounded text-xs hover:bg-indigo-100';
+            b.textContent = phrase;
+            b.addEventListener('click', function () {
+                keyword.value = phrase;
+                box.classList.add('hidden');
+            });
+            holder.appendChild(b);
+        });
+        box.classList.remove('hidden');
+    }
+
+    document.querySelectorAll('[data-ai]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var field = btn.getAttribute('data-ai');
+            setBusy(true, field === 'all' ? 'Готовлю заголовок, описание и фразы…' : 'Думаю…');
+
+            var body = new FormData();
+            body.append('key', aiKey);
+            body.append('focus_keyword', keyword.value);
+            body.append('field', field);
+
+            fetch('{{ admin_url('seo/generate') }}', {
+                method: 'POST',
+                credentials: 'same-origin',
+                body: body
+            }).then(function (r) { return r.json(); }).then(function (data) {
+                setBusy(false);
+                if (!data.ok) {
+                    status.classList.remove('hidden');
+                    status.textContent = 'Не получилось: ' + (data.error || 'неизвестная ошибка');
+                    return;
+                }
+                var d = data.data || {};
+                if (d.title) showSuggestion('title', d.title);
+                if (d.description) showSuggestion('description', d.description);
+                if (d.keywords && d.keywords.length) showKeywords(d.keywords);
+                else if (d.focus_keyword) showKeywords([d.focus_keyword]);
+            }).catch(function (e) {
+                setBusy(false);
+                status.classList.remove('hidden');
+                status.textContent = 'Ошибка сети: ' + e.message;
+            });
+        });
+    });
+
+    document.querySelectorAll('[data-apply]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            var field = btn.getAttribute('data-apply');
+            if (field === 'title' && pending.title) {
+                title.value = pending.title;
+                hideSuggestion('title');
+                refresh();
             }
-            if (!title.value.trim()) title.value = data.data.title;
-            if (!desc.value.trim()) desc.value = data.data.description;
-            if (!keyword.value.trim() && data.data.focus_keyword) keyword.value = data.data.focus_keyword;
-            status.textContent = 'Готово — проверьте и сохраните';
-            btn.disabled = false;
-            refresh();
-        }).catch(function (e) {
-            status.textContent = 'Ошибка: ' + e.message;
-            btn.disabled = false;
+            if (field === 'description' && pending.description) {
+                desc.value = pending.description;
+                hideSuggestion('description');
+                refresh();
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-cancel]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            hideSuggestion(btn.getAttribute('data-cancel'));
         });
     });
 })();

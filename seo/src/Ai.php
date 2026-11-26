@@ -39,30 +39,54 @@ class Ai
      * @return array{title:string,description:string,focus_keyword:string}
      * @throws \Exception
      */
-    public function generate(array $doc, string $keyword = ''): array
+    public function generate(array $doc, string $keyword = '', string $field = 'all'): array
     {
         $title = (string) ($doc['title'] ?? '');
         $text = Analyzer::plain((string) ($doc['content'] ?? ''));
         $text = mb_substr($text, 0, 4000);
 
-        $system = "Ты SEO-редактор. Пишешь заголовок и описание страницы для поисковой выдачи на русском языке. "
-            . "Заголовок: 30-65 символов, содержит главную мысль страницы, без кликбейта и без названия сайта. "
-            . "Описание: 120-165 символов, конкретно объясняет, что на странице, в конце — мягкий призыв. "
-            . "Не используй фразы вроде «лучший», «уникальный», «широкий выбор», если этого нет в тексте. "
-            . "Если дана ключевая фраза — она должна естественно войти в заголовок и в описание. "
-            . "Ответ — только JSON без пояснений: {\"title\": \"...\", \"description\": \"...\", \"focus_keyword\": \"...\"}. "
-            . "focus_keyword — 2-4 слова, самая вероятная поисковая фраза страницы.";
-
-        $prompt = "Адрес страницы: " . ($doc['url'] ?? '/') . "\n"
+        $context = "Адрес страницы: " . ($doc['url'] ?? '/') . "\n"
             . ($title !== '' ? "Текущий заголовок: {$title}\n" : '')
-            . ($keyword !== '' ? "Ключевая фраза (обязательна): {$keyword}\n" : '')
+            . ($keyword !== '' ? "Ключевая фраза (обязательна, входит естественно): {$keyword}\n" : '')
             . "\nТекст страницы:\n" . ($text !== '' ? $text : '(текста нет — опирайся на заголовок и адрес)');
 
+        $common = "Ты SEO-редактор для русскоязычного сайта. Пишешь по фактическому содержанию страницы, "
+            . "без кликбейта, без «лучший», «уникальный», «широкий выбор», если этого нет в тексте. "
+            . "Ответ — только JSON без пояснений и без markdown.";
+
+        switch ($field) {
+            case 'title':
+                $system = $common . " Дай один заголовок страницы: 30-65 символов, главная мысль, "
+                    . "без названия сайта в конце. Формат: {\"title\": \"...\"}";
+                $max = 200;
+                break;
+
+            case 'description':
+                $system = $common . " Дай одно описание для поисковой выдачи: 120-165 символов, "
+                    . "конкретно что на странице, в конце — мягкий призыв. Формат: {\"description\": \"...\"}";
+                $max = 300;
+                break;
+
+            case 'keyword':
+                $system = $common . " Предложи три поисковые фразы, под которые эта страница может "
+                    . "отвечать: 2-4 слова каждая, от более общего запроса к более точному, "
+                    . "без повторов. Формат: {\"keywords\": [\"...\", \"...\", \"...\"]}";
+                $max = 300;
+                break;
+
+            default:
+                $system = $common . " Дай заголовок (30-65 символов), описание (120-165 символов) "
+                    . "и самую вероятную поисковую фразу (2-4 слова). "
+                    . "Формат: {\"title\": \"...\", \"description\": \"...\", \"focus_keyword\": \"...\"}";
+                $max = 600;
+                break;
+        }
+
         $raw = $this->ai->chat(
-            [['role' => 'user', 'content' => $prompt]],
+            [['role' => 'user', 'content' => $context]],
             $system,
             0.4,
-            600
+            $max
         );
 
         $data = self::parseJson($raw);
@@ -70,11 +94,49 @@ class Ai
             throw new \Exception('Модель вернула не JSON — попробуйте ещё раз');
         }
 
-        return [
-            'title' => self::fit(trim((string) ($data['title'] ?? '')), Analyzer::TITLE_MAX),
-            'description' => self::fit(trim((string) ($data['description'] ?? '')), Analyzer::DESC_MAX),
-            'focus_keyword' => trim((string) ($data['focus_keyword'] ?? $keyword)),
-        ];
+        return self::normalize($data, $keyword, $field);
+    }
+
+    /**
+     * Привести ответ модели к тому, что ждёт интерфейс: обрезать по длине,
+     * выкинуть пустое, для фраз — массив без дублей.
+     *
+     * @param array<string,mixed> $data
+     * @return array<string,mixed>
+     */
+    private static function normalize(array $data, string $keyword, string $field): array
+    {
+        $out = [];
+
+        if ($field === 'keyword') {
+            $list = $data['keywords'] ?? ($data['focus_keyword'] ?? []);
+            if (!is_array($list)) {
+                $list = [$list];
+            }
+            $phrases = [];
+            foreach ($list as $phrase) {
+                $phrase = trim(mb_strtolower((string) $phrase));
+                $phrase = preg_replace('/\s+/u', ' ', $phrase) ?? $phrase;
+                if ($phrase !== '' && !in_array($phrase, $phrases, true)) {
+                    $phrases[] = $phrase;
+                }
+            }
+            return ['keywords' => array_slice($phrases, 0, 3)];
+        }
+
+        if (isset($data['title']) && trim((string) $data['title']) !== '') {
+            $out['title'] = self::fit(trim((string) $data['title']), Analyzer::TITLE_MAX);
+        }
+        if (isset($data['description']) && trim((string) $data['description']) !== '') {
+            $out['description'] = self::fit(trim((string) $data['description']), Analyzer::DESC_MAX);
+        }
+        if (isset($data['focus_keyword']) && trim((string) $data['focus_keyword']) !== '') {
+            $out['focus_keyword'] = trim((string) $data['focus_keyword']);
+        } elseif ($keyword !== '') {
+            $out['focus_keyword'] = $keyword;
+        }
+
+        return $out;
     }
 
     /**

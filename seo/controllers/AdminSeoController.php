@@ -251,7 +251,16 @@ class AdminSeoController extends \Admin\BaseController
             }
 
             $keyword = trim((string) ($_POST['focus_keyword'] ?? ''));
-            $generated = $ai->generate($doc, $keyword);
+
+            // Какое именно поле просят: заголовок, описание, фразы или всё.
+            // Отдельные промты короче и точнее — модель не отвлекается на
+            // три задачи сразу, а ответ влезает в 200-300 токенов.
+            $field = (string) ($_POST['field'] ?? 'all');
+            if (!in_array($field, ['all', 'title', 'description', 'keyword'], true)) {
+                $field = 'all';
+            }
+
+            $generated = $ai->generate($doc, $keyword, $field);
 
             echo json_encode(['ok' => true, 'data' => $generated], JSON_UNESCAPED_UNICODE);
         } catch (\Throwable $e) {

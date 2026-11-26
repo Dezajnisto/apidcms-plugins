@@ -1,6 +1,6 @@
 {
   "name": "seo",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SEO-адвайзер: мета-теги и Open Graph на сайте, sitemap.xml, чек-лист проверки каждой страницы с оценкой и подсказками",
   "enabled": true,
   "dependencies": [],

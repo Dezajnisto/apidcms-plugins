@@ -146,6 +146,38 @@ echo "Анализатор: robots\n";
 $noindex = $analyzer->analyze($good, ['robots' => 'noindex,follow']);
 ok('noindex замечен', byId($noindex['checks'])['robots_index']['status'] === 'warn');
 
+echo "Приоритет источников мета-тегов\n";
+// Сценарий с живого сайта: в pages.title лежит техническая подпись «Main»,
+// а тема выводит осмысленный заголовок вручную. Плагин не должен затирать
+// тему — иначе <title> становится «Main» (так и случилось на daristihi.ru).
+$themeDoc = [
+    'key' => 'page:pages:1', 'type' => 'page', 'table' => 'pages', 'id' => 1,
+    'url' => '/', 'title' => 'Main', 'slug' => 'home', 'description' => '',
+    'image' => '', 'content' => '', 'updated_at' => '',
+];
+$themeTags = [
+    'title' => 'Дари! — стихи, открытки и песни на заказ',
+    'description' => 'Стихи по вашим ответам за минуту.',
+    'og_title' => 'Дари! — стихи, открытки и песни на заказ',
+    'og_description' => 'Стихи по вашим ответам за минуту.',
+    'image' => 'https://example.test/cover.jpg',
+];
+
+$m = Plugins\Seo\Meta::effective($themeDoc, [], $settings, $themeTags);
+ok('тема важнее контента', $m['title'] === 'Дари! — стихи, открытки и песни на заказ', $m['title']);
+ok('источник — тема', $m['title_source'] === 'theme', $m['title_source']);
+ok('og:title из темы', $m['og_title'] === 'Дари! — стихи, открытки и песни на заказ');
+ok('og:description из темы', $m['og_description'] === 'Стихи по вашим ответам за минуту.');
+ok('картинка из темы', $m['image'] === 'https://example.test/cover.jpg');
+
+$m2 = Plugins\Seo\Meta::effective($themeDoc, ['title' => 'Свой заголовок из админки'], $settings, $themeTags);
+ok('SEO-поле важнее темы', $m2['title'] === 'Свой заголовок из админки', $m2['title']);
+ok('источник — seo', $m2['title_source'] === 'seo');
+
+$m3 = Plugins\Seo\Meta::effective($themeDoc, [], $settings, []);
+ok('без темы берётся контент', $m3['title'] === 'Main', $m3['title']);
+ok('источник — content', $m3['title_source'] === 'content');
+
 echo "Плотность ключевой фразы\n";
 $density = Analyzer::density('промт для нейросети и ещё раз промт для нейросети', 'промт для нейросети');
 ok('плотность считается', $density > 0.5 && $density <= 1.0, (string) $density);

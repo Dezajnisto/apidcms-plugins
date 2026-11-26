@@ -243,27 +243,14 @@ class Seo
         }
 
         $row = self::row($doc);
-        $e = Meta::effective($doc, $row, $settings);
+        $theme = self::readExisting($html);
+        $e = Meta::effective($doc, $row, $settings, $theme);
 
-        // Канонический адрес берём из запроса: только там есть языковой
-        // префикс и нет параметров, которые вообще не должны попадать в
-        // canonical. Ручное значение из SEO-поля остаётся главным.
-        if (trim((string) ($row['canonical'] ?? '')) === '') {
+        // Канонический адрес без явного значения берём из запроса: только там
+        // есть языковой префикс и нет параметров, которые не должны попадать
+        // в canonical. Явное значение из SEO-поля остаётся главным.
+        if (trim((string) ($row['canonical'] ?? '')) === '' && trim((string) ($theme['canonical'] ?? '')) === '') {
             $e['canonical'] = Meta::absolute($path);
-            $e['og_url'] = $e['canonical'];
-        }
-
-        // Дополняем тем, что тема уже вывела: плагин не должен обеднять страницу
-        [$themeTitle, $themeDescription, $themeImage] = self::readExisting($html);
-        if (trim((string) $e['title']) === '' && $themeTitle !== '') {
-            $e['title'] = $themeTitle;
-            $e['display_title'] = Meta::applyTemplate($themeTitle, (string) $settings->get('title_suffix', ''));
-        }
-        if (trim((string) $e['description']) === '' && $themeDescription !== '') {
-            $e['description'] = $themeDescription;
-        }
-        if (trim((string) $e['image']) === '' && $themeImage !== '') {
-            $e['image'] = $themeImage;
         }
 
         $blocks = Meta::head($e, $doc, $settings, $siteName);
@@ -286,29 +273,59 @@ class Seo
     }
 
     /**
-     * Заголовок и описание, которые уже есть в HTML темы.
+     * Всё, что тема уже вывела в <head>: заголовок, описание, соцсети,
+     * канон и robots. Эти значения — второй приоритет после явных SEO-полей:
+     * если автор темы написал осмысленный текст, плагин не должен затирать
+     * его технической подписью из базы.
      *
-     * @return array{0:string,1:string,2:string}
+     * @return array<string,string>
      */
     private static function readExisting(string $html): array
     {
-        $title = '';
-        $description = '';
-        $image = '';
+        $out = [];
+        if ($html === '') {
+            return $out;
+        }
 
         if (preg_match('#<title\b[^>]*>(.*?)</title>#is', $html, $m)) {
-            $title = trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-        }
-        if (preg_match('#<meta\s+[^>]*name=["\']description["\'][^>]*content=["\'](.*?)["\']#is', $html, $m)) {
-            $description = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-        } elseif (preg_match('#<meta\s+[^>]*content=["\'](.*?)["\'][^>]*name=["\']description["\']#is', $html, $m)) {
-            $description = trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-        }
-        if (preg_match('#<meta\s+[^>]*property=["\']og:image["\'][^>]*content=["\'](.*?)["\']#is', $html, $m)) {
-            $image = trim($m[1]);
+            $out['title'] = trim(html_entity_decode(strip_tags($m[1]), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
         }
 
-        return [$title, $description, $image];
+        $out['description'] = self::metaContent($html, 'name', 'description');
+        $out['robots'] = self::metaContent($html, 'name', 'robots');
+        $out['og_title'] = self::metaContent($html, 'property', 'og:title');
+        $out['og_description'] = self::metaContent($html, 'property', 'og:description');
+        $out['image'] = self::metaContent($html, 'property', 'og:image');
+
+        // Кавычка в PCRE через \x27: одинарная кавычка внутри PHP-строки в
+        // одинарных кавычках закрыла бы её саму.
+        $quote = '["\x27]';
+        $val = '([^"\x27]+)';
+        if (preg_match('#<link\s+[^>]*rel=' . $quote . 'canonical' . $quote . '[^>]*href=' . $quote . $val . $quote . '#is', $html, $m)) {
+            $out['canonical'] = trim($m[1]);
+        } elseif (preg_match('#<link\s+[^>]*href=' . $quote . $val . $quote . '[^>]*rel=' . $quote . 'canonical' . $quote . '#is', $html, $m)) {
+            $out['canonical'] = trim($m[1]);
+        }
+
+        return array_filter($out, fn($v) => $v !== '');
+    }
+
+    /** Значение <meta name|property="..." content="..."> в любом порядке атрибутов. */
+    private static function metaContent(string $html, string $attr, string $value): string
+    {
+        $q = preg_quote($value, '#');
+        $quote = '["\x27]';
+        $any = '([^"\x27]*)';
+        $patterns = [
+            '#<meta\s+[^>]*' . $attr . '=' . $quote . $q . $quote . '[^>]*content=' . $quote . $any . $quote . '#is',
+            '#<meta\s+[^>]*content=' . $quote . $any . $quote . '[^>]*' . $attr . '=' . $quote . $q . $quote . '#is',
+        ];
+        foreach ($patterns as $pattern) {
+            if (preg_match($pattern, $html, $m)) {
+                return trim(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+            }
+        }
+        return '';
     }
 
     /** Убрать теги, которые плагин выводит сам. */

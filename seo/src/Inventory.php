@@ -162,14 +162,28 @@ class Inventory
         }
 
         if ($segments === []) {
-            // Главная: страница, привязанная к корню навигации, или slug=home
+            // Главная. Сначала навигация: у части сайтов раздел «/» — это
+            // landing без привязанной страницы (page_id пустой), и тогда
+            // документ — сам раздел, а не запись в pages. Затем pages:
+            // slug бывает 'home', пустым и даже '/'. Все три варианта
+            // встречаются на живых сайтах.
             foreach ($this->navItems() as $nav) {
-                if (in_array(self::normalizePath((string) $nav['url']), ['/', '/home'], true) && !empty($nav['page_id'])) {
-                    return $this->find('page', 'pages', (int) $nav['page_id']);
+                if (!in_array(self::normalizePath((string) $nav['url']), ['/', '/home'], true)) {
+                    continue;
                 }
+                if (!empty($nav['page_id'])) {
+                    $page = $this->find('page', 'pages', (int) $nav['page_id']);
+                    if ($page !== null) {
+                        return $page;
+                    }
+                }
+                return $this->navDoc($nav);
             }
+
             try {
-                $page = $this->db->query("SELECT * FROM pages WHERE slug IN ('home', '') LIMIT 1")->fetch(\PDO::FETCH_ASSOC);
+                $page = $this->db->query(
+                    "SELECT * FROM pages WHERE slug IN ('home', '', '/') LIMIT 1"
+                )->fetch(\PDO::FETCH_ASSOC);
             } catch (\Throwable $e) {
                 $page = null;
             }
@@ -365,6 +379,53 @@ class Inventory
     /** @var array<int, array<string,mixed>>|null кэш на один запрос */
     private ?array $navCache = null;
 
+    /**
+     * Текущая локаль запроса: префикс из адреса, иначе базовый язык сайта.
+     * Нужна, чтобы развернуть мультиязычные поля вида {"ru":"…","en":"…"}.
+     */
+    public function currentLocale(): string
+    {
+        $base = 'ru';
+        try {
+            $row = $this->db->query(
+                "SELECT setting_value FROM system_settings WHERE setting_key = 'site_language'"
+            )->fetch(\PDO::FETCH_ASSOC);
+            $base = trim((string) ($row['setting_value'] ?? '')) ?: 'ru';
+        } catch (\Throwable $e) {
+            $base = 'ru';
+        }
+
+        $path = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+        $first = explode('/', trim($path, '/'))[0] ?? '';
+        if ($first !== '' && in_array($first, $this->extraLanguages(), true)) {
+            return $first;
+        }
+
+        return $base;
+    }
+
+    /**
+     * Развернуть мультиязычное поле. В базе title/description могут лежать
+     * как {"ru":"…","en":"…"} — без разворота это уехало бы в <title> сырым
+     * JSON (встречается на живом сайте).
+     */
+    private function t($value): string
+    {
+        $value = (string) $value;
+        if ($value === '' || $value[0] !== '{') {
+            return $value;
+        }
+        if (!class_exists('\Core\I18n')) {
+            return $value;
+        }
+
+        try {
+            return (string) \Core\I18n::resolve($value, $this->currentLocale());
+        } catch (\Throwable $e) {
+            return $value;
+        }
+    }
+
     /** @return array<int, array<string,mixed>> */
     private function navItems(): array
     {
@@ -478,11 +539,11 @@ class Inventory
             'table' => 'pages',
             'id' => (int) $page['id'],
             'url' => self::normalizePath($url),
-            'title' => trim((string) ($page['title'] ?? '')),
+            'title' => trim($this->t($page['title'] ?? '')),
             'slug' => $slug,
-            'description' => trim((string) ($page['meta_description'] ?? '')),
+            'description' => trim($this->t($page['meta_description'] ?? '')),
             'image' => trim((string) ($page['featured_image'] ?? '')),
-            'content' => $withContent ? $this->cut((string) ($page['content'] ?? '')) : '',
+            'content' => $withContent ? $this->cut($this->t($page['content'] ?? '')) : '',
             'updated_at' => (string) ($page['updated_at'] ?? ($page['created_at'] ?? '')),
             'template' => (string) ($page['template'] ?? ''),
         ];
@@ -497,14 +558,64 @@ class Inventory
             'table' => '',
             'id' => (int) $nav['id'],
             'url' => self::normalizePath((string) $nav['url']),
-            'title' => trim((string) ($nav['title'] ?? '')),
+            'title' => trim($this->t($nav['title'] ?? '')),
             'slug' => ltrim(self::normalizePath((string) $nav['url']), '/'),
-            'description' => trim((string) ($nav['description'] ?? '')),
+            'description' => trim($this->t($nav['description'] ?? '')),
             'image' => '',
-            'content' => '',
+            // Раздел-лендинг набирает текст из строк своей таблицы
+            // (source_table), иначе анализатор видит пустую страницу
+            // там, где на самом деле есть контент.
+            'content' => $withContent ? $this->landingContent((string) ($nav['source_table'] ?? '')) : '',
             'updated_at' => (string) ($nav['updated_at'] ?? ''),
             'template' => (string) ($nav['template'] ?? ''),
         ];
+    }
+
+    /**
+     * Текст лендинга: собираем текстовые колонки всех строк source_table.
+     * Ограничено, чтобы не вытащить в память каталог целиком.
+     */
+    private function landingContent(string $table): string
+    {
+        $table = trim($table);
+        if ($table === '' || !in_array($table, $this->db->getTables(), true)) {
+            return '';
+        }
+
+        $columns = $this->columns($table);
+        $textColumns = array_values(array_intersect(
+            $columns,
+            ['title', 'name', 'h1', 'heading', 'subtitle', 'description', 'content', 'body', 'text', 'excerpt', 'summary', 'intro', 'lead', 'note']
+        ));
+        if ($textColumns === []) {
+            return '';
+        }
+
+        $quoted = '"' . str_replace('"', '', $table) . '"';
+        $where = in_array('status', $columns, true)
+            ? "WHERE status IS NULL OR status = '' OR status = 'active'"
+            : '';
+
+        try {
+            $rows = $this->db->query(
+                "SELECT " . implode(', ', array_map(fn($c) => '"' . $c . '"', $textColumns))
+                . " FROM {$quoted} {$where} LIMIT 200"
+            )->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        $html = '';
+        foreach ($rows as $row) {
+            foreach ($textColumns as $column) {
+                $value = trim((string) ($row[$column] ?? ''));
+                if ($value !== '') {
+                    $html .= '<div>' . $value . '</div>';
+                }
+            }
+        }
+
+        return $this->cut($html);
     }
 
     /** @return array<string,mixed> */
@@ -525,7 +636,7 @@ class Inventory
         $title = '';
         foreach (['title', 'name', 'h1', 'heading', 'question', 'label'] as $candidate) {
             if (in_array($candidate, $columns, true) && trim((string) $row[$candidate]) !== '') {
-                $title = trim((string) $row[$candidate]);
+                $title = trim($this->t($row[$candidate]));
                 break;
             }
         }

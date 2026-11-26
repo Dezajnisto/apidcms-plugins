@@ -17,18 +17,47 @@ class Meta
      *
      * @return array<string,mixed>
      */
-    public static function effective(array $doc, array $row, Settings $settings): array
+    public static function effective(array $doc, array $row, Settings $settings, array $theme = []): array
     {
-        $title = trim((string) ($row['title'] ?? ''));
-        $description = trim((string) ($row['description'] ?? ''));
-        $image = trim((string) ($row['og_image'] ?? ''));
+        // Приоритет источников: явное SEO-поле → то, что уже выводит тема →
+        // колонка контента. Тема важнее контента: в pages.title часто лежит
+        // техническая подпись («Main», «Главная»), а тема выводит осмысленный
+        // заголовок вручную. Обратный порядок затирал хорошие теги (ловили на
+        // живом сайте: <title> стал «Main»).
+        $seoTitle = trim((string) ($row['title'] ?? ''));
+        $themeTitle = trim((string) ($theme['title'] ?? ''));
+        $contentTitle = trim((string) ($doc['title'] ?? ''));
 
-        $titleSource = $title !== '' ? 'seo' : 'content';
-        if ($title === '') {
-            $title = trim((string) ($doc['title'] ?? ''));
+        if ($seoTitle !== '') {
+            $title = $seoTitle;
+            $titleSource = 'seo';
+        } elseif ($themeTitle !== '') {
+            $title = $themeTitle;
+            $titleSource = 'theme';
+        } else {
+            $title = $contentTitle;
+            $titleSource = 'content';
         }
-        if ($description === '') {
-            $description = trim((string) ($doc['description'] ?? ''));
+
+        $seoDesc = trim((string) ($row['description'] ?? ''));
+        $themeDesc = trim((string) ($theme['description'] ?? ''));
+        $contentDesc = trim((string) ($doc['description'] ?? ''));
+
+        if ($seoDesc !== '') {
+            $description = $seoDesc;
+            $descriptionSource = 'seo';
+        } elseif ($themeDesc !== '') {
+            $description = $themeDesc;
+            $descriptionSource = 'theme';
+        } else {
+            $description = $contentDesc;
+            $descriptionSource = 'content';
+        }
+
+        // Картинка: SEO-поле → тема → картинка записи → общая из настроек.
+        $image = trim((string) ($row['og_image'] ?? ''));
+        if ($image === '') {
+            $image = trim((string) ($theme['image'] ?? ''));
         }
         if ($image === '') {
             $image = trim((string) ($doc['image'] ?? ''));
@@ -37,26 +66,53 @@ class Meta
             $image = trim((string) $settings->get('default_og_image', ''));
         }
 
+        // Соцсети: своё поле → то, что вывела тема → обычный заголовок/описание.
+        $ogTitle = trim((string) ($row['og_title'] ?? ''));
+        if ($ogTitle === '') {
+            $ogTitle = trim((string) ($theme['og_title'] ?? ''));
+        }
+        if ($ogTitle === '') {
+            $ogTitle = $title;
+        }
+
+        $ogDescription = trim((string) ($row['og_description'] ?? ''));
+        if ($ogDescription === '') {
+            $ogDescription = trim((string) ($theme['og_description'] ?? ''));
+        }
+        if ($ogDescription === '') {
+            $ogDescription = $description;
+        }
+
+        // robots: своё поле → тема → индексировать.
         $robots = trim((string) ($row['robots'] ?? ''));
+        if ($robots === '') {
+            $robots = trim((string) ($theme['robots'] ?? ''));
+        }
         if ($robots === '') {
             $robots = 'index,follow';
         }
 
+        // canonical: своё поле → тема → адрес страницы.
         $canonical = trim((string) ($row['canonical'] ?? ''));
-        $canonical = $canonical !== '' ? self::absolute($canonical) : self::absolute((string) ($doc['url'] ?? '/'));
+        if ($canonical === '') {
+            $canonical = trim((string) ($theme['canonical'] ?? ''));
+        }
+        $canonical = $canonical !== ''
+            ? self::absolute($canonical)
+            : self::absolute((string) ($doc['url'] ?? '/'));
 
         return [
             'title' => $title,
             'display_title' => self::applyTemplate($title, (string) $settings->get('title_suffix', '')),
             'title_source' => $titleSource,
             'description' => $description,
-            'description_source' => trim((string) ($row['description'] ?? '')) !== '' ? 'seo' : 'content',
+            'description_source' => $descriptionSource,
             'image' => $image,
             'robots' => $robots,
             'canonical' => $canonical,
             'focus_keyword' => trim((string) ($row['focus_keyword'] ?? '')),
-            'og_title' => trim((string) ($row['og_title'] ?? '')) !== '' ? trim((string) $row['og_title']) : $title,
-            'og_description' => trim((string) ($row['og_description'] ?? '')) !== '' ? trim((string) $row['og_description']) : $description,
+            'og_title' => $ogTitle,
+            'og_description' => $ogDescription,
             'type' => ($doc['type'] ?? '') === 'record' ? 'article' : 'website',
         ];
     }

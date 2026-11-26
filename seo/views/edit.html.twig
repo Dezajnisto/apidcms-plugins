@@ -1,0 +1,280 @@
+{% extends "base.html.twig" %}
+
+{% block title %}SEO: {{ doc.url }}{% endblock %}
+{% block page_title %}SEO страницы{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div>
+            <a href="{{ admin_url('seo') }}" class="text-sm text-gray-500 hover:text-blue-600">
+                <i class="fas fa-arrow-left mr-1"></i> ко всем страницам
+            </a>
+            <h1 class="text-lg font-semibold text-gray-900 mt-1">
+                {{ doc.title is not empty ? doc.title : '(без заголовка)' }}
+            </h1>
+            <a href="{{ doc.url }}" target="_blank" rel="noopener" class="text-sm text-blue-600 hover:underline">
+                {{ doc.url }} <i class="fas fa-external-link-alt text-xs"></i>
+            </a>
+        </div>
+        <div class="flex items-center gap-2 text-xs text-gray-500">
+            <span class="px-2 py-1 bg-gray-100 rounded">{{ doc.type == 'page' ? 'страница' : (doc.type == 'record' ? 'запись: ' ~ doc.table : 'раздел') }}</span>
+            {% if doc.updated_at %}<span>обновлено {{ doc.updated_at }}</span>{% endif %}
+        </div>
+    </div>
+
+    {% if flash %}
+    <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ flash.type == 'error' ? 'border-red-300 bg-red-50 text-red-800' : 'border-green-300 bg-green-50 text-green-800' }}">
+        {{ flash.message }}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Поля -->
+        <div class="lg:col-span-2 space-y-4">
+            <form method="post" action="{{ admin_url('seo/save') }}" class="bg-white rounded-lg border p-5 space-y-4">
+                <input type="hidden" name="key" value="{{ key }}">
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-sm font-medium text-gray-700">SEO-заголовок</label>
+                        <span class="text-xs text-gray-400">
+                            <span id="title-count">0</span> символов · оптимально 30–65
+                        </span>
+                    </div>
+                    <input type="text" name="title" id="f-title" value="{{ row.title ?? '' }}"
+                           placeholder="{{ doc.title }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <p class="mt-1 text-xs text-gray-500">
+                        Пусто — на сайте работает заголовок из контента:
+                        «{{ result.meta.title }}»
+                    </p>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="text-sm font-medium text-gray-700">Описание (description)</label>
+                        <span class="text-xs text-gray-400">
+                            <span id="desc-count">0</span> символов · оптимально 70–170
+                        </span>
+                    </div>
+                    <textarea name="description" id="f-description" rows="3"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">{{ row.description ?? '' }}</textarea>
+                    <div class="mt-2 flex items-start gap-2">
+                        <button type="button" id="ai-btn"
+                                class="px-3 py-1.5 bg-indigo-600 text-white rounded-md text-xs hover:bg-indigo-700 disabled:opacity-50"
+                                {{ ai_ready ? '' : 'disabled title="Нужен ключ DeepSeek"' }}>
+                            <i class="fas fa-wand-magic-sparkles mr-1"></i> Сгенерировать заголовок и описание
+                        </button>
+                        {% if not has_content %}
+                        <span class="text-xs text-amber-700 mt-1.5">У страницы нет текста — модель будет опираться на заголовок и адрес.</span>
+                        {% endif %}
+                        <span id="ai-status" class="text-xs text-gray-500 mt-1.5"></span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Ключевая фраза</label>
+                        <input type="text" name="focus_keyword" id="f-keyword" value="{{ row.focus_keyword ?? '' }}"
+                               placeholder="например: ремонт квартир под ключ"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        <p class="mt-1 text-xs text-gray-500">По ней считаются позиция в заголовке, тексте, адресе и плотность.</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Robots</label>
+                        {% set robots = row.robots ?? '' %}
+                        <select name="robots" class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <option value="" {{ robots == '' ? 'selected' : '' }}>по умолчанию (index,follow)</option>
+                            <option value="index,follow" {{ robots == 'index,follow' ? 'selected' : '' }}>index,follow — индексировать</option>
+                            <option value="noindex,follow" {{ robots == 'noindex,follow' ? 'selected' : '' }}>noindex,follow — не индексировать, ссылки учитывать</option>
+                            <option value="noindex,nofollow" {{ robots == 'noindex,nofollow' ? 'selected' : '' }}>noindex,nofollow — закрыть полностью</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Канонический адрес</label>
+                    <input type="text" name="canonical" value="{{ row.canonical ?? '' }}"
+                           placeholder="{{ result.meta.canonical }}"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                    <p class="mt-1 text-xs text-gray-500">Пусто — берётся адрес страницы. Нужен, когда одну страницу открывают по нескольким адресам.</p>
+                </div>
+
+                <details class="border-t pt-4">
+                    <summary class="text-sm font-medium text-gray-700 cursor-pointer">Соцсети и Open Graph</summary>
+                    <div class="mt-3 space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">og:title</label>
+                            <input type="text" name="og_title" value="{{ row.og_title ?? '' }}" placeholder="как в SEO-заголовке"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">og:description</label>
+                            <textarea name="og_description" rows="2" placeholder="как в описании"
+                                      class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">{{ row.og_description ?? '' }}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">og:image</label>
+                            <input type="text" name="og_image" value="{{ row.og_image ?? '' }}" placeholder="{{ result.meta.image }}"
+                                   class="w-full px-3 py-2 border border-gray-300 rounded-md text-sm">
+                            <p class="mt-1 text-xs text-gray-500">Путь от корня или полный URL. Пусто — картинка страницы, затем общая из настроек плагина.</p>
+                        </div>
+                    </div>
+                </details>
+
+                <div class="flex flex-wrap items-center gap-2 pt-2 border-t">
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+                        <i class="fas fa-check mr-1"></i> Сохранить
+                    </button>
+                    <button type="submit" name="reset" value="1"
+                            onclick="return confirm('Снять SEO-поля и вернуть значения из контента?')"
+                            class="px-4 py-2 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
+                        Сбросить к контенту
+                    </button>
+                    <a href="{{ doc.url }}" target="_blank" rel="noopener"
+                       class="px-4 py-2 text-sm text-gray-600 hover:text-blue-600">Открыть страницу</a>
+                </div>
+            </form>
+
+            <!-- Превью выдачи -->
+            <div class="bg-white rounded-lg border p-5">
+                <p class="text-xs uppercase tracking-wide text-gray-500 mb-3">Как это выглядит в поиске</p>
+                <div class="max-w-xl">
+                    <div class="text-xs text-gray-600 mb-0.5">{% if doc.updated_at %}{{ doc.updated_at|date('d.m.Y') }} — {% endif %}{{ doc.url }}</div>
+                    <div id="preview-title" class="text-lg text-blue-800 leading-snug hover:underline cursor-pointer">{{ result.meta.display_title ?: doc.title }}</div>
+                    <div id="preview-desc" class="text-sm text-gray-700 mt-1 leading-snug">{{ result.meta.description ?: 'Описание не задано — поисковик соберёт его сам.' }}</div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg border p-5">
+                <p class="text-xs uppercase tracking-wide text-gray-500 mb-3">Текст страницы</p>
+                <div class="text-sm text-gray-700 max-h-64 overflow-y-auto whitespace-pre-line">{{ result.stats.words }} слов
+                </div>
+                {% if result.stats.words == 0 %}
+                <p class="text-xs text-amber-700 mt-2">Текст не найден: проверки объёма, H1 и плотности не считаются.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Оценка и чек-лист -->
+        <div class="space-y-4">
+            <div class="bg-white rounded-lg border p-5 text-center">
+                <p class="text-xs uppercase tracking-wide text-gray-500 mb-2">Оценка страницы</p>
+                {% set score = result.score %}
+                {% set color = result.level == 'ok' ? 'text-green-600' : (result.level == 'warn' ? 'text-amber-600' : 'text-red-600') %}
+                {% set ring = result.level == 'ok' ? '#16a34a' : (result.level == 'warn' ? '#d97706' : '#dc2626') %}
+                <div class="relative inline-flex items-center justify-center">
+                    <svg width="112" height="112" viewBox="0 0 112 112">
+                        <circle cx="56" cy="56" r="48" fill="none" stroke="#e5e7eb" stroke-width="10"></circle>
+                        <circle cx="56" cy="56" r="48" fill="none" stroke="{{ ring }}" stroke-width="10"
+                                stroke-linecap="round" stroke-dasharray="{{ (score * 301 / 100)|round(1) }} 301"
+                                transform="rotate(-90 56 56)"></circle>
+                    </svg>
+                    <span class="absolute text-3xl font-bold {{ color }}">{{ score }}</span>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">
+                    {{ result.problems }} пункт(ов) требуют внимания
+                </p>
+                <p class="text-xs text-gray-500 mt-1">
+                    {{ result.stats.words }} слов · H1: {{ result.stats.h1 }} ·
+                    {% if result.stats.keyword_density is not null %}плотность {{ result.stats.keyword_density }}%{% else %}фраза не задана{% endif %}
+                </p>
+            </div>
+
+            <div class="bg-white rounded-lg border">
+                <div class="px-4 py-3 border-b text-xs uppercase tracking-wide text-gray-500">Чек-лист</div>
+                <ul class="divide-y divide-gray-100 text-sm">
+                    {% for check in result.checks %}
+                    {% if check.status != 'na' %}
+                    {% set icon = check.status == 'ok' ? '<i class="fas fa-circle-check text-green-600"></i>'
+                        : (check.status == 'warn' ? '<i class="fas fa-triangle-exclamation text-amber-500"></i>'
+                        : '<i class="fas fa-circle-xmark text-red-600"></i>') %}
+                    <li class="px-4 py-2.5 flex items-start gap-2">
+                        <span class="mt-0.5">{{ icon|raw }}</span>
+                        <div>
+                            <p class="text-gray-800 leading-snug">{{ check.label }}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">{{ check.message }}</p>
+                            {% if check.status != 'ok' %}
+                            <p class="text-xs text-gray-400 mt-0.5">{{ check.hint }}</p>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+
+            <div class="bg-white rounded-lg border p-4 text-xs text-gray-500">
+                <p class="font-medium text-gray-700 mb-1">Канонический адрес</p>
+                <p class="break-all">{{ result.meta.canonical }}</p>
+                <p class="font-medium text-gray-700 mt-3 mb-1">Картинка для соцсетей</p>
+                <p class="break-all">{{ result.meta.image ?: 'не задана' }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var title = document.getElementById('f-title');
+    var desc = document.getElementById('f-description');
+    var keyword = document.getElementById('f-keyword');
+    var titleCount = document.getElementById('title-count');
+    var descCount = document.getElementById('desc-count');
+    var previewTitle = document.getElementById('preview-title');
+    var previewDesc = document.getElementById('preview-desc');
+    var contentTitle = {{ (result.meta.title ?: doc.title)|json_encode|raw }};
+    var contentDesc = {{ (result.meta.description ?: '')|json_encode|raw }};
+
+    function refresh() {
+        var t = title.value.trim();
+        var d = desc.value.trim();
+        titleCount.textContent = t.length;
+        descCount.textContent = d.length;
+        titleCount.style.color = (t.length < 30 || t.length > 65) ? '#dc2626' : '#16a34a';
+        descCount.style.color = (d.length < 70 || d.length > 170) ? '#dc2626' : '#16a34a';
+        previewTitle.textContent = t || contentTitle;
+        previewDesc.textContent = d || contentDesc || 'Описание не задано — поисковик соберёт его сам.';
+    }
+
+    [title, desc].forEach(function (el) { el.addEventListener('input', refresh); });
+    refresh();
+
+    var btn = document.getElementById('ai-btn');
+    var status = document.getElementById('ai-status');
+    if (!btn) return;
+
+    btn.addEventListener('click', function () {
+        btn.disabled = true;
+        status.textContent = 'Думаю…';
+        var body = new FormData();
+        body.append('key', {{ key|json_encode|raw }});
+        body.append('focus_keyword', keyword.value);
+
+        fetch('{{ admin_url('seo/generate') }}', {
+            method: 'POST',
+            credentials: 'same-origin',
+            body: body
+        }).then(function (r) { return r.json(); }).then(function (data) {
+            if (!data.ok) {
+                status.textContent = data.error || 'Не получилось';
+                btn.disabled = false;
+                return;
+            }
+            if (!title.value.trim()) title.value = data.data.title;
+            if (!desc.value.trim()) desc.value = data.data.description;
+            if (!keyword.value.trim() && data.data.focus_keyword) keyword.value = data.data.focus_keyword;
+            status.textContent = 'Готово — проверьте и сохраните';
+            btn.disabled = false;
+            refresh();
+        }).catch(function (e) {
+            status.textContent = 'Ошибка: ' + e.message;
+            btn.disabled = false;
+        });
+    });
+})();
+</script>
+{% endblock %}

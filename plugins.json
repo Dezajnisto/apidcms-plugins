@@ -198,6 +198,38 @@
         "moderation"
       ],
       "min_cms_version": "2.8.0"
+    },
+    {
+      "name": "seo",
+      "version": "0.1.0",
+      "title": {
+        "ru": "SEO — мета-теги и советник",
+        "en": "SEO — Meta Tags & Advisor"
+      },
+      "description": {
+        "ru": "Мета-теги, Open Graph и JSON-LD для каждой страницы, sitemap.xml, 301-редиректы, журнал 404 и SEO-советник с оценкой 0–100 и чек-листом.",
+        "en": "Meta tags, Open Graph and JSON-LD per page, sitemap.xml, 301 redirects, 404 log and an SEO advisor with a 0–100 score and checklist."
+      },
+      "icon": "🔍",
+      "author": "@apidcms-team",
+      "category": "seo",
+      "dependencies": [],
+      "tags": [
+        "seo",
+        "meta",
+        "opengraph",
+        "json-ld",
+        "sitemap",
+        "robots",
+        "redirects",
+        "404",
+        "canonical",
+        "hreflang",
+        "analysis"
+      ],
+      "min_cms_version": "2.8.0",
+      "content_url": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/seo/README.md",
+      "content_url_en": "https://raw.githubusercontent.com/Dezajnisto/apidcms-plugins/main/seo/README.en.md"
     }
   ]
 }

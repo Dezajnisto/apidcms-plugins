@@ -1,0 +1,231 @@
+{% extends "base.html.twig" %}
+
+{% block title %}SEO{% endblock %}
+{% block page_title %}SEO — здоровье сайта{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6">
+
+    {% if flash %}
+    <div class="mb-4 rounded-lg border px-4 py-3 text-sm {{ flash.type == 'error' ? 'border-red-300 bg-red-50 text-red-800' : 'border-green-300 bg-green-50 text-green-800' }}">
+        {{ flash.message }}
+    </div>
+    {% endif %}
+
+    {% if not ai_ready %}
+    <div class="mb-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <span class="font-semibold">Кнопка «Сгенерировать» недоступна:</span>
+        не задан ключ DeepSeek. Его берут из
+        <a href="{{ admin_url('settings') }}#ai" class="underline">настроек AI</a>.
+        Остальные проверки работают без ключа.
+    </div>
+    {% endif %}
+
+    {% set sitemap_on = settings_obj.bool('sitemap_enabled', true) %}
+
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-lg border p-4">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Средняя оценка</p>
+            <p class="text-3xl font-bold mt-1 {{ avg is null ? 'text-gray-400' : (avg >= 80 ? 'text-green-600' : (avg >= 60 ? 'text-amber-600' : 'text-red-600')) }}">
+                {{ avg is null ? '—' : avg }}
+            </p>
+            <p class="text-xs text-gray-500 mt-1">по проверенным страницам</p>
+        </div>
+        <div class="bg-white rounded-lg border p-4">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Страниц в обходе</p>
+            <p class="text-3xl font-bold mt-1 text-gray-800">{{ counts.all }}</p>
+            <p class="text-xs text-gray-500 mt-1">проверено: {{ counts.all - counts.unchecked }}</p>
+        </div>
+        <div class="bg-white rounded-lg border p-4">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Требуют работы</p>
+            <p class="text-3xl font-bold mt-1 text-red-600">{{ counts.problems }}</p>
+            <p class="text-xs text-gray-500 mt-1">оценка ниже 60</p>
+        </div>
+        <div class="bg-white rounded-lg border p-4">
+            <p class="text-xs uppercase tracking-wide text-gray-500">Редиректы / 404</p>
+            <p class="text-3xl font-bold mt-1 text-gray-800">{{ redirects_count }} <span class="text-gray-300">/</span> {{ notfound_count }}</p>
+            <p class="text-xs mt-1">
+                <a href="{{ admin_url('seo/redirects') }}" class="text-blue-600 hover:underline">редиректы</a>
+                <span class="text-gray-300">·</span>
+                <a href="{{ admin_url('seo/notfound') }}" class="text-blue-600 hover:underline">ошибки</a>
+            </p>
+        </div>
+    </div>
+
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+        <div class="flex flex-wrap items-center gap-2">
+            {% for key, label in {
+                'all': 'Все (' ~ counts.all ~ ')',
+                'problems': 'Требуют работы (' ~ counts.problems ~ ')',
+                'unchecked': 'Не проверены (' ~ counts.unchecked ~ ')',
+                'good': 'Хорошо (' ~ counts.good ~ ')'
+            } %}
+            <a href="{{ admin_url('seo') }}?filter={{ key }}{% if search %}&q={{ search|url_encode }}{% endif %}"
+               class="px-3 py-1.5 rounded-md text-sm border {{ filter == key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                {{ label }}
+            </a>
+            {% endfor %}
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+            <form method="get" action="{{ admin_url('seo') }}" class="flex items-center gap-2">
+                <input type="hidden" name="filter" value="{{ filter }}">
+                <input type="text" name="q" value="{{ search }}" placeholder="адрес, заголовок, фраза"
+                       class="px-3 py-1.5 border border-gray-300 rounded-md text-sm w-56">
+                <button type="submit" class="px-3 py-1.5 bg-gray-800 text-white rounded-md text-sm">Найти</button>
+            </form>
+
+            <button type="button" id="scan-btn"
+                    class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+                <i class="fas fa-stethoscope mr-1"></i> Проверить сайт
+            </button>
+
+            <form method="post" action="{{ admin_url('seo/sitemap/rebuild') }}">
+                <button type="submit" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
+                    <i class="fas fa-sync mr-1"></i> Пересобрать sitemap
+                </button>
+            </form>
+
+            <a href="/sitemap.xml" target="_blank" rel="noopener"
+               class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50 {{ sitemap_on ? '' : 'opacity-50 pointer-events-none' }}">
+                <i class="fas fa-external-link-alt mr-1"></i> /sitemap.xml
+            </a>
+        </div>
+    </div>
+
+    <div id="scan-progress" class="hidden mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+        <div class="flex items-center justify-between mb-2">
+            <span id="scan-text">Проверяю страницы…</span>
+            <span id="scan-counter" class="font-mono text-xs"></span>
+        </div>
+        <div class="h-2 bg-blue-100 rounded overflow-hidden">
+            <div id="scan-bar" class="h-2 bg-blue-600 transition-all" style="width:0%"></div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
+        {% if rows is empty %}
+        <div class="p-12 text-center text-gray-500">
+            <i class="fas fa-magnifying-glass-chart text-4xl mb-3 block text-gray-300"></i>
+            <p>Нет страниц под этот фильтр</p>
+            <p class="text-sm mt-1">Проверьте сайт кнопкой «Проверить сайт» — оценки появятся здесь.</p>
+        </div>
+        {% else %}
+        <table class="min-w-full divide-y divide-gray-200 text-sm">
+            <thead class="bg-gray-50 text-gray-600">
+                <tr>
+                    <th class="px-4 py-3 text-left font-medium w-20">Оценка</th>
+                    <th class="px-4 py-3 text-left font-medium">Страница</th>
+                    <th class="px-4 py-3 text-left font-medium w-48">Ключевая фраза</th>
+                    <th class="px-4 py-3 text-left font-medium w-64">Описание</th>
+                    <th class="px-4 py-3 w-10"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for row in rows %}
+                {% set badge = row.score is null ? 'bg-gray-100 text-gray-500'
+                    : (row.level == 'ok' ? 'bg-green-100 text-green-700'
+                    : (row.level == 'warn' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700')) %}
+                <tr class="hover:bg-gray-50">
+                    <td class="px-4 py-3">
+                        <span class="inline-flex items-center justify-center w-11 h-7 rounded-md text-xs font-bold {{ badge }}">
+                            {{ row.score is null ? '—' : row.score }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        <a href="{{ admin_url('seo/edit') }}?key={{ row.key|url_encode }}" class="font-medium text-gray-900 hover:text-blue-600">
+                            {{ row.title is not empty ? row.title : '(без заголовка)' }}
+                        </a>
+                        <div class="text-xs text-gray-500 mt-0.5">
+                            {{ row.type == 'record' ? row.table ~ ' · ' : '' }}/{{ row.url|trim('/') }}
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-xs">
+                        {% if row.focus_keyword %}
+                            <span class="px-2 py-0.5 bg-gray-100 rounded text-gray-700">{{ row.focus_keyword }}</span>
+                        {% else %}
+                            <span class="text-gray-400">не выбрана</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-xs text-gray-600">
+                        {% if row.description %}
+                            {{ row.description|slice(0, 80) }}{{ row.description|length > 80 ? '…' }}
+                        {% else %}
+                            <span class="text-red-500">пусто</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <a href="{{ admin_url('seo/edit') }}?key={{ row.key|url_encode }}" class="text-gray-400 hover:text-blue-600">
+                            <i class="fas fa-pen"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% if total_filtered > rows|length %}
+        <div class="px-4 py-3 text-xs text-gray-500 border-t">
+            Показано {{ rows|length }} из {{ total_filtered }}. Уточните поиск или используйте фильтры.
+        </div>
+        {% endif %}
+        {% endif %}
+    </div>
+
+    <p class="mt-4 text-xs text-gray-500">
+        Оценка считается по чек-листу из 20+ пунктов: заголовок, описание, объём текста, H1,
+        ключевая фраза, alt у картинок, читаемость адреса, картинка для соцсетей, noindex.
+        Проверка офлайновая — сайт не тормозит, интернет не нужен.
+    </p>
+</div>
+
+<script>
+(function () {
+    var btn = document.getElementById('scan-btn');
+    if (!btn) return;
+    var box = document.getElementById('scan-progress');
+    var text = document.getElementById('scan-text');
+    var counter = document.getElementById('scan-counter');
+    var bar = document.getElementById('scan-bar');
+    var running = false;
+
+    function step(offset) {
+        var url = '{{ admin_url('seo/scan') }}?offset=' + offset + '&limit=25';
+        fetch(url, {credentials: 'same-origin'})
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                if (!data.ok) {
+                    text.textContent = 'Ошибка: ' + (data.error || 'неизвестно');
+                    running = false;
+                    btn.disabled = false;
+                    return;
+                }
+                var percent = data.total > 0 ? Math.round(data.done * 100 / data.total) : 100;
+                bar.style.width = percent + '%';
+                counter.textContent = data.done + ' / ' + data.total;
+                if (data.finished) {
+                    text.textContent = 'Готово — обновите страницу, чтобы увидеть оценки';
+                    btn.disabled = false;
+                    running = false;
+                    setTimeout(function () { location.reload(); }, 900);
+                    return;
+                }
+                step(data.done);
+            })
+            .catch(function (e) {
+                text.textContent = 'Прервано: ' + e.message;
+                btn.disabled = false;
+                running = false;
+            });
+    }
+
+    btn.addEventListener('click', function () {
+        if (running) return;
+        running = true;
+        btn.disabled = true;
+        box.classList.remove('hidden');
+        text.textContent = 'Проверяю страницы…';
+        step(0);
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,82 @@
+{
+  "name": "seo",
+  "version": "0.1.0",
+  "description": "SEO-адвайзер: мета-теги и Open Graph на сайте, sitemap.xml, чек-лист проверки каждой страницы с оценкой и подсказками",
+  "enabled": true,
+  "dependencies": [],
+  "tables": [
+    "plugin_seo_meta",
+    "plugin_seo_redirect",
+    "plugin_seo_404"
+  ],
+  "settings": [
+    {
+      "key": "meta_enabled",
+      "type": "checkbox",
+      "value": true,
+      "label": "Выводить мета-теги на сайт",
+      "description": "Заголовок, description, robots, canonical, Open Graph и JSON-LD подставляются в готовую страницу. Выключите, если тема выводит всё сама"
+    },
+    {
+      "key": "og_enabled",
+      "type": "checkbox",
+      "value": true,
+      "label": "Open Graph и Twitter Card",
+      "description": "Как выглядит ссылка в мессенджерах и соцсетях"
+    },
+    {
+      "key": "jsonld_enabled",
+      "type": "checkbox",
+      "value": true,
+      "label": "Микроразметка JSON-LD",
+      "description": "Organization и WebSite для всего сайта, BreadcrumbList и Article для записей"
+    },
+    {
+      "key": "default_og_image",
+      "type": "text",
+      "value": "",
+      "label": "Картинка для соцсетей по умолчанию",
+      "description": "Путь от корня, например /storage/uploads/cover.jpg. Нужна, когда у страницы нет своей"
+    },
+    {
+      "key": "title_suffix",
+      "type": "text",
+      "value": "",
+      "label": "Шаблон заголовка",
+      "description": "По умолчанию SEO-заголовок выводится как есть. Пример: {title} — Мой сайт"
+    },
+    {
+      "key": "sitemap_enabled",
+      "type": "checkbox",
+      "value": true,
+      "label": "Отдавать sitemap.xml",
+      "description": "Карта сайта собирается из страниц, разделов и записей таблиц. Существующую страницу sitemap.xml плагин не трогает, пока не выключите её"
+    },
+    {
+      "key": "robots_mode",
+      "type": "select",
+      "value": "auto",
+      "options": {
+        "auto": "Авто — если своего robots.txt нет",
+        "on": "Всегда отдавать сгенерированный",
+        "off": "Не трогать robots.txt"
+      },
+      "label": "robots.txt",
+      "description": "Авто: сгенерированный отдаётся, только когда в навигации нет страницы robots.txt"
+    },
+    {
+      "key": "noindex_404",
+      "type": "checkbox",
+      "value": true,
+      "label": "noindex для 404",
+      "description": "Страница ошибки не попадает в индекс поисковика"
+    },
+    {
+      "key": "ai_enabled",
+      "type": "checkbox",
+      "value": true,
+      "label": "Кнопка «Сгенерировать»",
+      "description": "Заголовок и описание пишет нейросеть через ключ DeepSeek из настроек CMS. Ключа нет — кнопка не работает, остальное работает"
+    }
+  ]
+}

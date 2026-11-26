@@ -38,11 +38,12 @@ class Inventory
             if ($nav['page_type'] === 'page' && !empty($nav['page_id'])) {
                 continue; // страница попадёт в список отдельно, с контентом
             }
-            if (!in_array($nav['page_type'], ['dynamic', 'blog', 'catalog', 'search', 'form', 'ai', 'external', 'raw'], true)) {
+            // Раздел — это самостоятельный документ со своим адресом, какой бы
+            // тип у него ни был: landing, about, price, reviews, form, dynamic.
+            // Исключения: raw и external (машиночитаемые файлы и чужие
+            // страницы), поиск и AI-чат (у них нет своего контента).
+            if (in_array($nav['page_type'], ['raw', 'external', 'search', 'ai'], true)) {
                 continue;
-            }
-            if ($nav['page_type'] === 'raw' || $nav['page_type'] === 'external') {
-                continue; // машиночитаемые файлы и внешние страницы не SEO-документы
             }
             $docs[] = $this->navDoc($nav, $withContent);
         }
@@ -67,9 +68,18 @@ class Inventory
             $docs[] = $this->pageDoc($page, $navByPage[(int) $page['id']] ?? null, $withContent);
         }
 
-        // Записи таблиц разделов
+        // Записи таблиц разделов.
+        //
+        // Только page_type = dynamic: именно этот тип в ядре даёт адреса
+        // вида /раздел/запись (FrontController::handleDynamicContent).
+        // Таблицы блоков (landing, about, price, faq, reviews, form) — это
+        // контент одной страницы: у них нет своих URL, и без фильтра плагин
+        // выдумывал адреса вроде /glavnaya/35, которые отдают 404.
         $tables = $this->db->getTables();
         foreach ($this->navItems() as $nav) {
+            if ((string) ($nav['page_type'] ?? '') !== 'dynamic') {
+                continue;
+            }
             $table = trim((string) ($nav['source_table'] ?? ''));
             if ($table === '' || !in_array($table, $tables, true)) {
                 continue;
@@ -205,6 +215,11 @@ class Inventory
                 return $this->navDoc($nav);
             }
 
+            // Только dynamic даёт /раздел/запись: у landing-таблиц (блоки
+            // страницы) своих адресов нет, и такой запрос ядро отдаёт как 404.
+            if ((string) ($nav['page_type'] ?? '') !== 'dynamic') {
+                continue;
+            }
             $table = trim((string) ($nav['source_table'] ?? ''));
             if ($table === '') {
                 continue;
@@ -244,7 +259,7 @@ class Inventory
                 $navByPage[(int) $nav['page_id']] = $nav;
             }
             $table = trim((string) ($nav['source_table'] ?? ''));
-            if ($table !== '' && !isset($navByTable[$table])) {
+            if ($table !== '' && !isset($navByTable[$table]) && (string) ($nav['page_type'] ?? '') === 'dynamic') {
                 $navByTable[$table] = $nav;
             }
         }

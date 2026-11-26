@@ -1,0 +1,252 @@
+{% extends "base.html.twig" %}
+
+{% block title %}Чеки НПД{% endblock %}
+{% block page_title %}Чеки НПД{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-6 space-y-6">
+
+    {# === Нет ключа шифрования === #}
+    {% if not has_key %}
+    <div class="rounded-lg border border-red-300 bg-red-50 p-4 text-sm text-red-900">
+        <p class="font-semibold mb-1">Нет ключа шифрования токенов</p>
+        <p class="mb-2">Без него войти в «Мой налог» нельзя: токен некуда положить.
+           Выполните на сервере одну команду:</p>
+        <pre class="bg-white border border-red-200 rounded p-3 overflow-x-auto text-xs">php plugins/npd/tools/make-key.php</pre>
+        <p class="mt-2 text-xs">Файл: <code>{{ key_path }}</code>. В git он не попадает, у каждого сайта свой ключ.</p>
+    </div>
+    {% endif %}
+
+    {# === Состояние подключения === #}
+    <div class="bg-white rounded-lg shadow-sm border p-5">
+        <div class="flex flex-wrap items-start justify-between gap-4">
+            <div>
+                <h2 class="text-lg font-semibold mb-1">
+                    {% if connected and not auth_error %}
+                        <span class="text-green-600">●</span> Подключено к «Моему налогу»
+                    {% elseif connected %}
+                        <span class="text-amber-500">●</span> Сессия не действует
+                    {% else %}
+                        <span class="text-gray-400">●</span> Не подключено
+                    {% endif %}
+                </h2>
+
+                {% if connected %}
+                <p class="text-sm text-gray-600">
+                    {% if account_name %}{{ account_name }}{% endif %}
+                    {% if inn %}· ИНН {{ inn }}{% endif %}
+                    {% if token_expires %}· токен до {{ token_expires }}{% endif %}
+                </p>
+                {% else %}
+                <p class="text-sm text-gray-600">Войдите по номеру телефона, привязанному к приложению «Мой налог». Пароль не нужен и не хранится.</p>
+                {% endif %}
+
+                {% if auth_error %}
+                <p class="mt-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded p-2">
+                    {{ auth_error }}
+                </p>
+                {% endif %}
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2">
+                {% if connected %}
+                <form method="post" action="{{ admin_url('npd/check') }}">
+                    <button class="px-3 py-1.5 border border-gray-300 rounded-md text-sm hover:bg-gray-50">
+                        <i class="fas fa-plug mr-1"></i> Проверить связь
+                    </button>
+                </form>
+                <form method="post" action="{{ admin_url('npd/run') }}">
+                    <button class="px-3 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
+                        <i class="fas fa-bolt mr-1"></i> Пробить очередь
+                    </button>
+                </form>
+                <form method="post" action="{{ admin_url('npd/logout') }}"
+                      onsubmit="return confirm('Забыть сессию? Чеки перестанут пробиваться до нового входа по SMS.');">
+                    <button class="px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-600 hover:bg-gray-50">
+                        Забыть сессию
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if not connected or auth_error %}
+        <div class="mt-5 border-t pt-5">
+            {% if challenge and challenge.token %}
+                <form method="post" action="{{ admin_url('npd/auth/verify') }}" class="flex flex-wrap items-end gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Код из SMS на {{ challenge.phone }}</label>
+                        <input type="text" name="code" inputmode="numeric" autocomplete="one-time-code"
+                               class="px-3 py-1.5 border border-gray-300 rounded-md text-sm w-40" placeholder="123456" autofocus>
+                    </div>
+                    <button class="px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">Войти</button>
+                </form>
+            {% else %}
+                <form method="post" action="{{ admin_url('npd/auth/start') }}" class="flex flex-wrap items-end gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Телефон «Моего налога»</label>
+                        <input type="tel" name="phone" class="px-3 py-1.5 border border-gray-300 rounded-md text-sm w-56"
+                               placeholder="+7 900 000-00-00" required>
+                    </div>
+                    <button class="px-4 py-1.5 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">Отправить код</button>
+                </form>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="mt-4 text-xs text-gray-500">
+            Пробивать чеки: <strong class="{{ enabled ? 'text-green-700' : 'text-red-700' }}">{{ enabled ? 'да' : 'нет' }}</strong>
+            &nbsp;·&nbsp; Пробный режим: <strong class="{{ dry_run ? 'text-amber-700' : 'text-green-700' }}">{{ dry_run ? 'включён' : 'выключен' }}</strong>
+            &nbsp;·&nbsp; Письмо покупателю: <strong>{{ send_email ? 'да' : 'нет' }}</strong>
+            &nbsp;·&nbsp; <a href="{{ admin_url('plugins/npd?tab=settings') }}" class="text-blue-600 hover:underline">Настройки плагина</a>
+        </div>
+
+        {% if dry_run %}
+        <p class="mt-3 text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded p-2">
+            Пробный режим: платежи попадают в журнал со статусом «пробный», в ФНС ничего не уходит.
+            Когда вход проверен — снимите галочку «Пробный режим» в настройках плагина.
+        </p>
+        {% endif %}
+    </div>
+
+    {# === Служебные ключи === #}
+    <div class="bg-white rounded-lg shadow-sm border p-5 text-sm">
+        <h2 class="text-lg font-semibold mb-3">Подключение источников дохода</h2>
+
+        <div class="space-y-4">
+            <div>
+                <p class="text-gray-700 mb-1"><strong>Боты и ручные продажи</strong> — POST-запрос, возвращает ссылку на чек сразу:</p>
+                <pre class="bg-gray-50 border rounded p-3 overflow-x-auto text-xs">POST {{ base_url }}/npd/income
+X-Npd-Timestamp: 1764000000
+X-Npd-Signature: hex(hmac_sha256(timestamp + "." + тело_запроса, секрет))
+{"amount": "199.00", "description": "Стихи на заказ", "ref": "Д-1001"}</pre>
+                <p class="mt-1 text-xs text-gray-500">Секрет: <code class="bg-gray-100 px-1 rounded">{{ api_secret }}</code> — показывать только тем, кому доверяете.</p>
+            </div>
+
+            <div>
+                <p class="text-gray-700 mb-1"><strong>Cron</strong> — добирает очередь, если вебхук не успел:</p>
+                <pre class="bg-gray-50 border rounded p-3 overflow-x-auto text-xs">*/5 * * * * curl -s "{{ base_url }}/npd/tick?key={{ tick_key }}" &gt;/dev/null</pre>
+            </div>
+        </div>
+    </div>
+
+    {# === Сводка ФНС (структура ответа не документирована — показываем как есть) === #}
+    {% if summary %}
+    <details class="bg-white rounded-lg shadow-sm border p-5 text-sm">
+        <summary class="cursor-pointer font-semibold">Сводка по доходам из «Моего налога»</summary>
+        <pre class="mt-3 bg-gray-50 border rounded p-3 overflow-x-auto text-xs">{{ summary|json_encode(constant('JSON_PRETTY_PRINT') b-or constant('JSON_UNESCAPED_UNICODE')) }}</pre>
+        <p class="mt-2 text-xs text-gray-500">Лимит НПД — 2,4 млн ₽ в год. Следите за ним: при превышении чеки перестанут проходить.</p>
+    </details>
+    {% endif %}
+
+    {# === Журнал === #}
+    <div class="bg-white rounded-lg shadow-sm border overflow-hidden">
+        <div class="p-4 border-b flex flex-wrap items-center justify-between gap-3">
+            <div class="flex flex-wrap items-center gap-2">
+                {% set labels = {'all': 'Все', 'issued': 'Пробиты', 'pending': 'В очереди', 'failed': 'Ошибки', 'dry_run': 'Пробные', 'canceled': 'Аннулированы', 'skipped': 'Пропущены'} %}
+                {% for key, label in labels %}
+                <a href="{{ admin_url('npd') }}?status={{ key }}{% if search %}&q={{ search|url_encode }}{% endif %}"
+                   class="px-3 py-1.5 rounded-md text-sm border {{ status == key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50' }}">
+                    {{ label }}{% if counts[key] is defined and counts[key] %} <span class="opacity-70">{{ counts[key] }}</span>{% endif %}
+                </a>
+                {% endfor %}
+            </div>
+
+            <form method="get" action="{{ admin_url('npd') }}" class="flex items-center gap-2">
+                <input type="hidden" name="status" value="{{ status }}">
+                <input type="text" name="q" value="{{ search }}" placeholder="Сумма, описание, номер платежа"
+                       class="px-3 py-1.5 border border-gray-300 rounded-md text-sm w-64">
+                <button class="px-3 py-1.5 bg-gray-800 text-white rounded-md text-sm">Найти</button>
+            </form>
+        </div>
+
+        {% if receipts is empty %}
+        <div class="p-12 text-center text-gray-500">
+            <i class="fas fa-receipt text-4xl mb-3 block text-gray-300"></i>
+            Чеков пока нет. Как только пройдёт оплата — запись появится здесь.
+        </div>
+        {% else %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                    <tr>
+                        <th class="px-4 py-2 text-left">Дата</th>
+                        <th class="px-4 py-2 text-right">Сумма</th>
+                        <th class="px-4 py-2 text-left">Что продали</th>
+                        <th class="px-4 py-2 text-left">Платёж</th>
+                        <th class="px-4 py-2 text-left">Статус</th>
+                        <th class="px-4 py-2 text-left">Чек</th>
+                        <th class="px-4 py-2"></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for r in receipts %}
+                    <tr class="border-t hover:bg-gray-50 align-top">
+                        <td class="px-4 py-2 whitespace-nowrap text-gray-600">{{ r.created_at }}</td>
+                        <td class="px-4 py-2 text-right font-medium whitespace-nowrap">{{ r.amount }} ₽</td>
+                        <td class="px-4 py-2">
+                            {{ r.description }}
+                            {% if r.ref %}<div class="text-xs text-gray-400">{{ r.ref }}</div>{% endif %}
+                        </td>
+                        <td class="px-4 py-2 text-xs text-gray-500 font-mono break-all max-w-[12rem]">
+                            {{ r.payment_id ?: '—' }}
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap">
+                            {% set colors = {
+                                'issued': 'bg-green-100 text-green-800',
+                                'pending': 'bg-blue-100 text-blue-800',
+                                'failed': 'bg-red-100 text-red-800',
+                                'dry_run': 'bg-amber-100 text-amber-800',
+                                'canceled': 'bg-gray-200 text-gray-700',
+                                'skipped': 'bg-gray-100 text-gray-600'
+                            } %}
+                            {% set names = {
+                                'issued': 'пробит', 'pending': 'в очереди', 'failed': 'ошибка',
+                                'dry_run': 'пробный', 'canceled': 'аннулирован', 'skipped': 'пропущен'
+                            } %}
+                            <span class="px-2 py-0.5 rounded text-xs {{ colors[r.status] is defined ? colors[r.status] : 'bg-gray-100 text-gray-600' }}">
+                                {{ names[r.status] is defined ? names[r.status] : r.status }}
+                            </span>
+                            {% if r.attempts > 0 and r.status == 'pending' %}
+                            <div class="text-xs text-gray-400 mt-1">попыток: {{ r.attempts }}</div>
+                            {% endif %}
+                            {% if r.last_error %}
+                            <div class="text-xs text-red-700 mt-1 max-w-xs">{{ r.last_error }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-2">
+                            {% if r.receipt_url %}
+                            <a href="{{ r.receipt_url }}" target="_blank" rel="noopener"
+                               class="text-blue-600 hover:underline">открыть</a>
+                            <div class="text-xs text-gray-400 font-mono">{{ r.receipt_uuid }}</div>
+                            {% else %}
+                            <span class="text-gray-300">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-2 whitespace-nowrap text-right">
+                            {% if r.status != 'issued' and r.status != 'canceled' %}
+                            <form method="post" action="{{ admin_url('npd/retry/' ~ r.id) }}" class="inline">
+                                <button class="text-xs text-blue-600 hover:underline">пробить</button>
+                            </form>
+                            {% endif %}
+                            {% if r.receipt_uuid and r.status == 'issued' %}
+                            <form method="post" action="{{ admin_url('npd/cancel/' ~ r.id) }}" class="inline"
+                                  onsubmit="return confirm('Аннулировать чек в «Моём налоге»?');">
+                                <select name="comment" class="text-xs border border-gray-300 rounded px-1 py-0.5 ml-2">
+                                    <option value="REFUND">возврат денег</option>
+                                    <option value="MISTAKE">чек ошибочный</option>
+                                    <option value="SERVICE_ERROR">сбой</option>
+                                </select>
+                                <button class="text-xs text-red-600 hover:underline ml-1">аннулировать</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

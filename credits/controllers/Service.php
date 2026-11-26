@@ -73,7 +73,7 @@ class Service
         }
 
         $db = self::getDb();
-        $db->beginTransaction();
+        $db->getConnection()->beginTransaction();
         try {
             // Ensure balance row exists
             $db->query(
@@ -99,7 +99,7 @@ class Service
                 [$userId, $amount, $type, $desc, $ref, $newBalance]
             );
 
-            $db->commit();
+            $db->getConnection()->commit();
 
             // Fire hook
             $pm = \Core\PluginManager::getInstance();
@@ -107,7 +107,7 @@ class Service
 
             return $newBalance;
         } catch (\Exception $e) {
-            $db->rollback();
+            $db->getConnection()->rollBack();
             error_log('Credits: add() failed: ' . $e->getMessage());
             throw $e;
         }
@@ -135,7 +135,7 @@ class Service
         }
 
         $db = self::getDb();
-        $db->beginTransaction();
+        $db->getConnection()->beginTransaction();
         try {
             // Atomic update (subtract)
             $db->query(
@@ -156,7 +156,7 @@ class Service
                 [$userId, $negAmount, $type, $desc, $ref, $newBalance]
             );
 
-            $db->commit();
+            $db->getConnection()->commit();
 
             // Fire hook
             $pm = \Core\PluginManager::getInstance();
@@ -164,7 +164,7 @@ class Service
 
             return $newBalance;
         } catch (\Exception $e) {
-            $db->rollback();
+            $db->getConnection()->rollBack();
             error_log('Credits: deduct() failed: ' . $e->getMessage());
             throw $e;
         }

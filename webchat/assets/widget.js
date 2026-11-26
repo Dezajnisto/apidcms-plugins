@@ -167,6 +167,24 @@
    * ответа сервера — поэтому цвет и заголовок видны с первого кадра, а не
    * после первого сообщения.
    */
+  // Цвет текста на акцентном фоне. Не порог «на глаз», а контраст по WCAG:
+  // считаем оба варианта (белый и тёмный) и берём тот, что читается лучше.
+  // Нужно потому, что акценты сайтов бывают светлыми (лайм #B8FA4F,
+  // золото #d4a556) — там белый текст даёт контраст 2:1.
+  function readableInk(hex) {
+    var m = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(String(hex || '').trim());
+    if (!m) { return '#ffffff'; }
+    var h = m[1];
+    if (h.length === 3) { h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2]; }
+    var lin = function (c) { return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+    var L = 0.2126 * lin(parseInt(h.substr(0, 2), 16) / 255)
+          + 0.7152 * lin(parseInt(h.substr(2, 2), 16) / 255)
+          + 0.0722 * lin(parseInt(h.substr(4, 2), 16) / 255);
+    var vsWhite = 1.05 / (L + 0.05);          // белый #fff
+    var vsDark = (L + 0.05) / 0.064;          // тёмный #111827
+    return vsDark > vsWhite ? '#111827' : '#ffffff';
+  }
+
   function applyConfig(config) {
     if (!config || typeof config !== 'object') { return; }
     state.config = config;
@@ -175,7 +193,10 @@
     els.status.textContent = config.online ? 'на связи' : 'не в сети';
     els.status.className = 'wc-status ' + (config.online ? 'wc-online' : 'wc-offline');
 
-    if (config.color) { host.style.setProperty('--wc-color', config.color); }
+    if (config.color) {
+      host.style.setProperty('--wc-color', config.color);
+      host.style.setProperty('--wc-ink', readableInk(config.color));
+    }
     if (config.position === 'left') {
       host.classList.add('wc-left');
     } else {

@@ -131,7 +131,7 @@ class MaxChannel implements ChannelInterface
             }
 
             // Текст цитаты — второй, независимый путь: в нём есть номер
-            // обращения («#daristihi-12 · Посетитель»), и по нему ответ
+            // обращения («#example-12 · Посетитель»), и по нему ответ
             // привязывается даже если mid не совпал.
             $replyText = (string) ($quoted['body']['text'] ?? $quoted['text'] ?? '');
         }

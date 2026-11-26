@@ -88,10 +88,10 @@ class Chat
     }
 
     /**
-     * Метка сайта в номере обращения: daristihi.ru → daristihi.
+     * Метка сайта в номере обращения: example.com → example.
      *
      * В общем боте номера сайтов совпадают (у каждого свой #1), поэтому в
-     * общем режиме в мессенджер уходит «#daristihi-3», а не «#3».
+     * общем режиме в мессенджер уходит «#example-3», а не «#3».
      */
     public static function siteTag(string $host): string
     {
@@ -455,29 +455,42 @@ class Chat
 
     /**
      * Обращение по номеру из текста. В общем боте номер несёт метку сайта
-     * («#daristihi-12»), в обычном — просто «#12». Метка обязана совпасть с
+     * («#example-12»), в обычном — просто «#12». Метка обязана совпасть с
      * доменом этого сайта, иначе номер относится к соседу.
      */
     private function threadByNumber(string $text, bool $shared): ?array
     {
+        // Номер ищем в любом месте текста, а не только в начале: оператор
+        // пишет «Да, это example-5» — и это тоже должно адресовать ответ.
+        // Берём первое совпадение, у которого нашлось обращение: в общем боте
+        // в тексте может быть упомянут и чужой сайт.
         if ($shared) {
-            if (!preg_match('/#([a-z0-9-]+)-(\d+)\b/ui', $text, $m)) {
+            $own = preg_quote($this->ownTag(), '/');
+            if (!preg_match_all('/#?(' . $own . ')-(\d{1,9})\b/ui', $text, $all, PREG_SET_ORDER)) {
                 return null;
             }
-            if (strtolower($m[1]) !== $this->ownTag()) {
-                return null;
+            foreach ($all as $m) {
+                $thread = $this->getThread((int) $m[2]);
+                if ($thread) {
+                    return $thread;
+                }
             }
-            return $this->getThread((int) $m[2]);
+            return null;
         }
 
-        if (preg_match('/#(\d+)\b/', $text, $m)) {
-            return $this->getThread((int) $m[1]);
+        if (preg_match_all('/#(\d{1,9})\b/', $text, $all, PREG_SET_ORDER)) {
+            foreach ($all as $m) {
+                $thread = $this->getThread((int) $m[1]);
+                if ($thread) {
+                    return $thread;
+                }
+            }
         }
 
         return null;
     }
 
-    /** Найти обращение по ответу, теме или префиксу «#12» / «#daristihi-12». */
+    /** Найти обращение по ответу, теме или префиксу «#12» / «#example-12». */
     private function resolveThread(array $parsed, bool $shared = false): ?array
     {
         $this->resolveReason = 'empty';
@@ -503,7 +516,7 @@ class Chat
 
         $text = (string) ($parsed['text'] ?? '');
 
-        // 1.5. Текст цитаты: в нём есть номер обращения («#daristihi-12 · Иван»).
+        // 1.5. Текст цитаты: в нём есть номер обращения («#example-12 · Иван»).
         //      Второй независимый путь — работает даже когда mid не совпал,
         //      а в общем боте ещё и отсекает чужие сайты по метке.
         $quoted = (string) ($parsed['reply_text'] ?? '');
@@ -512,20 +525,32 @@ class Chat
             if ($thread) {
                 return $thread;
             }
+            // Цитата есть, а номер в ней чужой. Дальше искать нельзя: резервный
+            // путь «последнее сообщение бота» вернул бы СВОЁ обращение, и
+            // ответ соседу утёк бы нам. Выходим сразу.
             if ($shared) {
                 $this->resolveReason = 'foreign';
+                return null;
             }
         }
 
         // 2. Явный номер в тексте. В общем режиме номер несёт метку сайта:
-        //    «#daristihi-12 текст» — иначе «#3» совпадает у всех сайтов.
-        if (preg_match('/^#[a-z0-9-]*\d+\b/ui', $text)) {
-            $thread = $this->threadByNumber($text, $shared);
-            if ($thread) {
-                return $thread;
-            }
-            // Номер есть, а своего обращения нет — чужой сайт или удалённое.
+        //    «#example-12» — иначе «#3» совпадает у всех сайтов.
+        $thread = $this->threadByNumber($text, $shared);
+        if ($thread) {
+            return $thread;
+        }
+
+        // Номер в тексте есть, но не наш (или обращение удалено). В общем боте
+        // это значит, что оператор адресовал ответ соседу — молчим и выходим,
+        // иначе резервный путь отправит ответ не туда.
+        if ($shared && preg_match('/#?[a-z][a-z0-9-]*-\d{1,9}\b/ui', $text)) {
             $this->resolveReason = 'foreign';
+            return null;
+        }
+        if (!$shared && preg_match('/#\d{1,9}\b/', $text)) {
+            $this->resolveReason = 'foreign';
+            return null;
         }
 
         // 3. Тема Telegram: id темы = внешняя ссылка обращения.
@@ -591,7 +616,7 @@ class Chat
 
     private function stripThreadPrefix(string $text): string
     {
-        // «#12 », «#daristihi-12 » — номер обращения не должен попасть в текст.
+        // «#12 », «#example-12 » — номер обращения не должен попасть в текст.
         $text = preg_replace('/^#[a-z0-9-]*\d+\s*/ui', '', $text);
         return trim((string) $text);
     }

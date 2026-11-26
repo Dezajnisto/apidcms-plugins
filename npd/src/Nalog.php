@@ -227,7 +227,7 @@ class Nalog
             'operationTime' => $income['operation_time'],
             'requestTime' => $now,
             'services' => [[
-                'name' => mb_substr((string) $income['description'], 0, 250),
+                'name' => self::serviceName((string) $income['description']),
                 'amount' => $amount,
                 'quantity' => 1,
             ]],
@@ -402,6 +402,42 @@ class Nalog
             $digits = '7' . $digits;
         }
         return $digits;
+    }
+
+    /**
+     * Наименование услуги для чека: без эмодзи и типографских тире.
+     *
+     * Чек — документ для налоговой, а не сообщение в чате. Эмодзи в
+     * наименовании выглядят как шутка в отчётности, а длинное тире «—» в
+     * печатной форме читается как перенос строки. Оставляем обычный дефис.
+     *
+     * Нормализация на выходе, а не в вызывающем коде: через этот метод
+     * проходят все чеки — из вебхука ЮKassa, из ботов и из ручного API.
+     */
+    public static function serviceName(string $name): string
+    {
+        // Эмодзи, пиктограммы, флаги, вариационные селекторы, ZWJ, keycap.
+        $name = preg_replace(
+            '/[\x{1F000}-\x{1FAFF}\x{1F1E6}-\x{1F1FF}\x{2600}-\x{27BF}'
+            . '\x{2B00}-\x{2BFF}\x{FE00}-\x{FE0F}\x{200D}\x{20E3}]/u',
+            '',
+            $name
+        ) ?? $name;
+
+        // Тире и минусы → дефис.
+        $name = preg_replace('/[\x{2012}\x{2013}\x{2014}\x{2212}]/u', '-', $name) ?? $name;
+
+        // Хвосты после удаления эмодзи: двойные пробелы, «слово -  слово».
+        $name = preg_replace('/\s+/u', ' ', $name) ?? $name;
+        $name = preg_replace('/\s*-\s*/u', ' - ', $name) ?? $name;
+        $name = trim($name);
+        $name = trim($name, " -\t\n\r\0\x0B");
+
+        if ($name === '') {
+            $name = 'Услуга';
+        }
+
+        return mb_substr($name, 0, 250);
     }
 
     /**
